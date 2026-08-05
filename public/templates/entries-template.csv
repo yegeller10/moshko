@@ -1,0 +1,3 @@
+worker_name,client_name,location,date,start_time,end_time,car_hours,parking,other_amount,other_note
+דני כהן,לקוח אלפא,תל אביב,2026-08-01,08:00,16:00,1.5,25,,
+Dana Levi,Client Beta,Haifa,2026-08-02,09:00,17:30,0,0,40,tools
