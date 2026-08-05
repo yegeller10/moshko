@@ -1,129 +1,60 @@
 /* eslint-disable */
 /**
- * Explicit data model stub for CI without `npx convex dev`.
- * Refresh by linking a Convex deployment.
+ * Generated data model types.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
  */
 
-export type Id<TableName extends string> = string & { __tableName: TableName };
+import type {
+  DataModelFromSchemaDefinition,
+  DocumentByName,
+  TableNamesInDataModel,
+  SystemTableNames,
+} from "convex/server";
+import type { GenericId } from "convex/values";
+import schema from "../schema.js";
 
-export type Doc<TableName extends keyof DataModel> =
-  DataModel[TableName]["document"];
+/**
+ * The names of all of your Convex tables.
+ */
+export type TableNames = TableNamesInDataModel<DataModel>;
 
-type SystemFields = {
-  _id: Id<string>;
-  _creationTime: number;
-};
+/**
+ * The type of a document stored in Convex.
+ *
+ * @typeParam TableName - A string literal type of the table name (like "users").
+ */
+export type Doc<TableName extends TableNames> = DocumentByName<
+  DataModel,
+  TableName
+>;
 
-export type DataModel = {
-  users: {
-    document: SystemFields & {
-      _id: Id<"users">;
-      workosUserId: string;
-      email: string;
-      name?: string;
-      role: "admin";
-      status: "active" | "disabled";
-      invitedBy?: Id<"users">;
-    };
-    fieldPaths: string;
-    indexes: {
-      by_workosUserId: ["workosUserId"];
-      by_email: ["email"];
-    };
-    searchIndexes: Record<string, never>;
-    vectorIndexes: Record<string, never>;
-  };
-  invites: {
-    document: SystemFields & {
-      _id: Id<"invites">;
-      email: string;
-      invitedBy: Id<"users">;
-      status: "pending" | "accepted" | "revoked";
-      createdAt: number;
-    };
-    fieldPaths: string;
-    indexes: { by_email: ["email"] };
-    searchIndexes: Record<string, never>;
-    vectorIndexes: Record<string, never>;
-  };
-  workers: {
-    document: SystemFields & {
-      _id: Id<"workers">;
-      name: string;
-      active: boolean;
-    };
-    fieldPaths: string;
-    indexes: { by_name: ["name"] };
-    searchIndexes: Record<string, never>;
-    vectorIndexes: Record<string, never>;
-  };
-  clients: {
-    document: SystemFields & {
-      _id: Id<"clients">;
-      name: string;
-      email?: string;
-      rateMode: "hourly" | "daily";
-      hourlyRate: number;
-      dailyRate?: number;
-      extraHourRate?: number;
-      carHourlyRate?: number;
-      active: boolean;
-    };
-    fieldPaths: string;
-    indexes: { by_name: ["name"] };
-    searchIndexes: Record<string, never>;
-    vectorIndexes: Record<string, never>;
-  };
-  timeEntries: {
-    document: SystemFields & {
-      _id: Id<"timeEntries">;
-      workerId: Id<"workers">;
-      clientId: Id<"clients">;
-      location: string;
-      date: string;
-      startTime: string;
-      endTime: string;
-      hours: number;
-      note?: string;
-      createdBy: Id<"users">;
-      createdAt: number;
-    };
-    fieldPaths: string;
-    indexes: {
-      by_client_date: ["clientId", "date"];
-      by_date: ["date"];
-      by_worker: ["workerId"];
-    };
-    searchIndexes: Record<string, never>;
-    vectorIndexes: Record<string, never>;
-  };
-  entryAddons: {
-    document: SystemFields & {
-      _id: Id<"entryAddons">;
-      entryId: Id<"timeEntries">;
-      type: "car_drive" | "parking" | "other";
-      amount: number;
-      note?: string;
-    };
-    fieldPaths: string;
-    indexes: { by_entry: ["entryId"] };
-    searchIndexes: Record<string, never>;
-    vectorIndexes: Record<string, never>;
-  };
-  rateRules: {
-    document: SystemFields & {
-      _id: Id<"rateRules">;
-      key: "default";
-      overtimeConfigured: boolean;
-      bands: Array<{
-        label: string;
-        multiplier: number;
-        thresholdHours: number | null;
-      }>;
-    };
-    fieldPaths: string;
-    indexes: { by_key: ["key"] };
-    searchIndexes: Record<string, never>;
-    vectorIndexes: Record<string, never>;
-  };
-};
+/**
+ * An identifier for a document in Convex.
+ *
+ * Convex documents are uniquely identified by their `Id`, which is accessible
+ * on the `_id` field. To learn more, see [Document IDs](https://docs.convex.dev/using/document-ids).
+ *
+ * Documents can be loaded using `db.get(tableName, id)` in query and mutation functions.
+ *
+ * IDs are just strings at runtime, but this type can be used to distinguish them from other
+ * strings when type checking.
+ *
+ * @typeParam TableName - A string literal type of the table name (like "users").
+ */
+export type Id<TableName extends TableNames | SystemTableNames> =
+  GenericId<TableName>;
+
+/**
+ * A type describing your Convex data model.
+ *
+ * This type includes information about what tables you have, the type of
+ * documents stored in those tables, and the indexes defined on them.
+ *
+ * This type is used to parameterize methods like `queryGeneric` and
+ * `mutationGeneric` to make them type-safe.
+ */
+export type DataModel = DataModelFromSchemaDefinition<typeof schema>;

@@ -10,6 +10,11 @@ const DEFAULT_BANDS = [
   { label: "200%", multiplier: 2, thresholdHours: null },
 ];
 
+const DEFAULT_SERVICE_RATES = {
+  carHourlyRate: 0,
+  parkingRate: 0,
+};
+
 /**
  * After WorkOS Google login: bootstrap first admin, or accept invite, else deny.
  */
@@ -77,6 +82,7 @@ export const ensureAccess = mutation({
           key: "default",
           overtimeConfigured: false,
           bands: DEFAULT_BANDS,
+          ...DEFAULT_SERVICE_RATES,
         });
       }
 

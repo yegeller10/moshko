@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/convex/schemas/convex.schema.json",
+  "authKit": {
+    "dev": {
+      "configure": {
+        "redirectUris": [
+          "http://localhost:5173/auth/callback",
+          "http://127.0.0.1:5173/auth/callback"
+        ],
+        "appHomepageUrl": "http://localhost:5173",
+        "corsOrigins": [
+          "http://localhost:5173",
+          "http://127.0.0.1:5173"
+        ]
+      },
+      "localEnvVars": {
+        "VITE_WORKOS_CLIENT_ID": "${authEnv.WORKOS_CLIENT_ID}",
+        "VITE_WORKOS_REDIRECT_URI": "http://localhost:5173/auth/callback"
+      }
+    },
+    "preview": {
+      "configure": {
+        "redirectUris": ["https://moshko.pages.dev/auth/callback"],
+        "appHomepageUrl": "https://moshko.pages.dev",
+        "corsOrigins": ["https://moshko.pages.dev"]
+      }
+    },
+    "prod": {
+      "configure": {
+        "redirectUris": ["https://moshko.pages.dev/auth/callback"],
+        "appHomepageUrl": "https://moshko.pages.dev",
+        "corsOrigins": ["https://moshko.pages.dev"]
+      }
+    }
+  },
+  "aiFiles": {
+    "enabled": false
+  }
+}

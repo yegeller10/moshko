@@ -79,11 +79,7 @@ export function ImportPage() {
         date: string;
         startTime: string;
         endTime: string;
-        addons: Array<{
-          type: "car_drive" | "parking" | "other";
-          amount: number;
-          note?: string;
-        }>;
+        note?: string;
       }> = [];
       for (const row of validRows) {
         const workerId =
@@ -97,17 +93,6 @@ export function ImportPage() {
         if (!workerId || !clientId) {
           throw new Error(`Missing entity for row ${row.rowNumber}`);
         }
-        const addons = [];
-        if (row.car_hours > 0)
-          addons.push({ type: "car_drive" as const, amount: row.car_hours });
-        if (row.parking > 0)
-          addons.push({ type: "parking" as const, amount: row.parking });
-        if (row.other_amount > 0)
-          addons.push({
-            type: "other" as const,
-            amount: row.other_amount,
-            note: row.other_note || undefined,
-          });
         payload.push({
           workerId,
           clientId,
@@ -115,7 +100,7 @@ export function ImportPage() {
           date: row.date,
           startTime: row.start_time,
           endTime: row.end_time,
-          addons,
+          note: row.note || undefined,
         });
       }
 
@@ -217,7 +202,7 @@ export function ImportPage() {
       )}
 
       {status === "done" && (
-        <Card className="text-sm text-teal-800">{t("import.done")}</Card>
+        <Card className="text-sm text-brand">{t("import.done")}</Card>
       )}
       {status === "error" && (
         <Card className="text-sm text-red-700">{t("common.error")}</Card>

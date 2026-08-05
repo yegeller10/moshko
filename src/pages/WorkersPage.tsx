@@ -6,54 +6,202 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import type { Id } from "../../convex/_generated/dataModel";
+
+type WorkerType = "owner" | "employee" | "independent";
+
+const emptyForm = () => ({
+  firstName: "",
+  lastName: "",
+  type: "" as "" | WorkerType,
+  idNumber: "",
+  birthDate: "",
+  address: "",
+  phone: "",
+  carLicense: false,
+  heightWorkLicense: false,
+  active: true,
+});
 
 export function WorkersPage() {
   const { t } = useTranslation();
   const workers = useQuery(api.workers.list, { includeInactive: true });
   const create = useMutation(api.workers.create);
   const update = useMutation(api.workers.update);
-  const [name, setName] = useState("");
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    await create({ name: name.trim() });
-    setName("");
+    await create({
+      firstName: form.firstName.trim() || undefined,
+      lastName: form.lastName.trim() || undefined,
+      type: form.type || undefined,
+      idNumber: form.idNumber.trim() || undefined,
+      birthDate: form.birthDate || undefined,
+      address: form.address.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+      carLicense: form.carLicense,
+      heightWorkLicense: form.heightWorkLicense,
+      active: form.active,
+    });
+    setForm(emptyForm());
+    setOpen(false);
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold">{t("workers.title")}</h2>
+    <div className="w-full space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-xl font-bold md:text-2xl">{t("workers.title")}</h2>
+        <Button size="sm" onClick={() => setOpen((v) => !v)}>
+          {t("workers.add")}
+        </Button>
+      </div>
 
-      <Card>
-        <form onSubmit={onAdd} className="flex gap-2">
-          <div className="flex-1">
-            <Label htmlFor="name" className="sr-only">
-              {t("workers.name")}
-            </Label>
-            <Input
-              id="name"
-              placeholder={t("workers.name")}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <Button type="submit">{t("workers.add")}</Button>
-        </form>
-      </Card>
+      {open && (
+        <Card>
+          <form
+            onSubmit={onAdd}
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            <div>
+              <Label>{t("workers.firstName")}</Label>
+              <Input
+                value={form.firstName}
+                onChange={(e) =>
+                  setForm({ ...form, firstName: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>{t("workers.lastName")}</Label>
+              <Input
+                value={form.lastName}
+                onChange={(e) =>
+                  setForm({ ...form, lastName: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>{t("workers.type")}</Label>
+              <Select
+                value={form.type}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    type: e.target.value as "" | WorkerType,
+                  })
+                }
+              >
+                <option value="">—</option>
+                <option value="owner">{t("workers.types.owner")}</option>
+                <option value="employee">{t("workers.types.employee")}</option>
+                <option value="independent">
+                  {t("workers.types.independent")}
+                </option>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("workers.idNumber")}</Label>
+              <Input
+                value={form.idNumber}
+                onChange={(e) =>
+                  setForm({ ...form, idNumber: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>{t("workers.birthDate")}</Label>
+              <Input
+                type="date"
+                value={form.birthDate}
+                onChange={(e) =>
+                  setForm({ ...form, birthDate: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>{t("workers.phone")}</Label>
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Label>{t("workers.address")}</Label>
+              <Input
+                value={form.address}
+                onChange={(e) =>
+                  setForm({ ...form, address: e.target.value })
+                }
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.carLicense}
+                onChange={(e) =>
+                  setForm({ ...form, carLicense: e.target.checked })
+                }
+              />
+              {t("workers.carLicense")}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.heightWorkLicense}
+                onChange={(e) =>
+                  setForm({ ...form, heightWorkLicense: e.target.checked })
+                }
+              />
+              {t("workers.heightWorkLicense")}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) =>
+                  setForm({ ...form, active: e.target.checked })
+                }
+              />
+              {t("workers.active")}
+            </label>
+            <Button type="submit" className="sm:col-span-2 lg:col-span-3">
+              {t("common.save")}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {!workers?.length ? (
-        <Card className="text-sm text-slate-500">{t("workers.empty")}</Card>
+        <Card className="text-sm text-muted">{t("workers.empty")}</Card>
       ) : (
-        <ul className="space-y-2">
+        <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {workers.map((w) => (
             <li key={w._id}>
-              <Card className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="font-medium">{w.name}</p>
-                  <p className="text-xs text-slate-500">
-                    {w.active ? t("workers.active") : "—"}
+              <Card className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="font-medium">{w.displayName}</p>
+                  {w.type && (
+                    <p className="text-xs text-muted">
+                      {t(`workers.types.${w.type}`)}
+                    </p>
+                  )}
+                  {w.phone && (
+                    <p className="text-xs text-muted">{w.phone}</p>
+                  )}
+                  {w.idNumber && (
+                    <p className="text-xs text-muted">
+                      {t("workers.idNumber")}: {w.idNumber}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted">
+                    {t("workers.carLicense")}:{" "}
+                    {w.carLicense ? t("common.yes") : t("common.no")}
+                    {" · "}
+                    {t("workers.heightWorkLicense")}:{" "}
+                    {w.heightWorkLicense ? t("common.yes") : t("common.no")}
                   </p>
                 </div>
                 <Button
@@ -62,11 +210,11 @@ export function WorkersPage() {
                   onClick={() =>
                     void update({
                       id: w._id as Id<"workers">,
-                      active: !w.active,
+                      active: !(w.active !== false),
                     })
                   }
                 >
-                  {w.active ? "Off" : "On"}
+                  {w.active !== false ? "Off" : "On"}
                 </Button>
               </Card>
             </li>

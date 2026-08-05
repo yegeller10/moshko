@@ -1,5 +1,6 @@
 import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+import { useCallback, useMemo } from "react";
 import { App } from "./App";
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
@@ -19,18 +20,29 @@ const convex = new ConvexReactClient(
 
 function useConvexWorkOSAuth() {
   const { isLoading, user, getAccessToken } = useAuth();
-  return {
-    isLoading,
-    isAuthenticated: !!user,
-    fetchAccessToken: async () => {
+
+  const fetchAccessToken = useCallback(
+    async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
       try {
-        const token = await getAccessToken();
+        const token = await getAccessToken({
+          forceRefresh: forceRefreshToken,
+        });
         return token ?? null;
       } catch {
         return null;
       }
     },
-  };
+    [getAccessToken],
+  );
+
+  return useMemo(
+    () => ({
+      isLoading,
+      isAuthenticated: !!user,
+      fetchAccessToken,
+    }),
+    [isLoading, user, fetchAccessToken],
+  );
 }
 
 export function Root() {
@@ -44,7 +56,7 @@ export function Root() {
     return (
       <div className="flex min-h-dvh items-center justify-center px-4">
         <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-teal-800">Moshko</h1>
+          <h1 className="text-xl font-bold text-ink">Moshko</h1>
           <p className="mt-3 text-sm text-slate-600">
             Missing WorkOS / Convex config. Copy <code>.env.example</code> to{" "}
             <code>.env.local</code> and set real values, then run{" "}
@@ -60,6 +72,12 @@ export function Root() {
       clientId={workosClientId!}
       redirectUri={redirectUri}
       apiHostname={apiHostname}
+      onRedirectCallback={() => {
+        // AuthKit already cleaned the URL; send user into the app shell.
+        if (window.location.pathname.startsWith("/auth/")) {
+          window.history.replaceState({}, "", "/");
+        }
+      }}
     >
       <ConvexProviderWithAuth client={convex} useAuth={useConvexWorkOSAuth}>
         <App />

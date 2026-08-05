@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@workos-inc/authkit-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -15,10 +15,21 @@ export function SettingsPage() {
   const admins = useQuery(api.users.listAdmins);
   const invites = useQuery(api.users.listInvites);
   const rateRules = useQuery(api.reports.getRateRules);
+  const serviceRates = useQuery(api.expenses.getServiceRates);
   const inviteAdmin = useMutation(api.users.inviteAdmin);
   const revokeInvite = useMutation(api.users.revokeInvite);
+  const setServiceRates = useMutation(api.expenses.setServiceRates);
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [carRate, setCarRate] = useState("");
+  const [parkingRate, setParkingRate] = useState("");
+  const [ratesMsg, setRatesMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!serviceRates) return;
+    setCarRate(String(serviceRates.carHourlyRate ?? 0));
+    setParkingRate(String(serviceRates.parkingRate ?? 0));
+  }, [serviceRates]);
 
   async function onInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -32,9 +43,23 @@ export function SettingsPage() {
     }
   }
 
+  async function onSaveRates(e: React.FormEvent) {
+    e.preventDefault();
+    setRatesMsg(null);
+    try {
+      await setServiceRates({
+        carHourlyRate: Number(carRate) || 0,
+        parkingRate: Number(parkingRate) || 0,
+      });
+      setRatesMsg("ok");
+    } catch {
+      setRatesMsg("error");
+    }
+  }
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold">{t("settings.title")}</h2>
+    <div className="w-full max-w-3xl space-y-4">
+      <h2 className="text-xl font-bold md:text-2xl">{t("settings.title")}</h2>
 
       <Card className="space-y-3">
         <Label>{t("settings.language")}</Label>
@@ -54,10 +79,45 @@ export function SettingsPage() {
             {t("settings.english")}
           </Button>
         </div>
-        <p className="text-xs text-slate-500">{user?.email}</p>
+        <p className="text-xs text-muted">{user?.email}</p>
         <Button variant="secondary" onClick={() => void signOut()}>
           {t("auth.signOut")}
         </Button>
+      </Card>
+
+      <Card className="space-y-3">
+        <h3 className="font-semibold">{t("settings.serviceRates")}</h3>
+        <form onSubmit={onSaveRates} className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>{t("settings.carHourlyRate")}</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={carRate}
+              onChange={(e) => setCarRate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>{t("settings.parkingRate")}</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={parkingRate}
+              onChange={(e) => setParkingRate(e.target.value)}
+            />
+          </div>
+          <Button type="submit" className="sm:col-span-2">
+            {t("settings.saveRates")}
+          </Button>
+        </form>
+        {ratesMsg === "ok" && (
+          <p className="text-xs text-brand">{t("entries.saved")}</p>
+        )}
+        {ratesMsg === "error" && (
+          <p className="text-xs text-red-700">{t("common.error")}</p>
+        )}
       </Card>
 
       <Card className="space-y-3">
@@ -73,7 +133,7 @@ export function SettingsPage() {
           <Button type="submit">{t("settings.sendInvite")}</Button>
         </form>
         {msg === "ok" && (
-          <p className="text-xs text-teal-700">{t("entries.saved")}</p>
+          <p className="text-xs text-brand">{t("entries.saved")}</p>
         )}
         {msg === "error" && (
           <p className="text-xs text-red-700">{t("common.error")}</p>
@@ -106,7 +166,7 @@ export function SettingsPage() {
         </div>
         <div>
           <p className="mb-1 text-sm font-medium">{t("settings.admins")}</p>
-          <ul className="space-y-1 text-sm text-slate-700">
+          <ul className="space-y-1 text-sm text-zinc-700">
             {(admins ?? []).map((a) => (
               <li key={a._id}>
                 {a.email}
@@ -119,8 +179,8 @@ export function SettingsPage() {
 
       <Card className="space-y-2">
         <h3 className="font-semibold">{t("settings.overtime")}</h3>
-        <p className="text-sm text-slate-600">{t("settings.overtimeHint")}</p>
-        <ul className="text-sm text-slate-700">
+        <p className="text-sm text-muted">{t("settings.overtimeHint")}</p>
+        <ul className="text-sm text-zinc-700">
           {(rateRules?.bands ?? [
             { label: "100%", multiplier: 1 },
             { label: "125%", multiplier: 1.25 },

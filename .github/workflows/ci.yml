@@ -18,7 +18,41 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
-      - run: npm run build
+      - name: Build
         env:
-          VITE_CONVEX_URL: https://placeholder.convex.cloud
-          VITE_WORKOS_CLIENT_ID: client_placeholder
+          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
+          VITE_WORKOS_CLIENT_ID: ${{ secrets.VITE_WORKOS_CLIENT_ID }}
+          VITE_WORKOS_REDIRECT_URI: ${{ secrets.VITE_WORKOS_REDIRECT_URI }}
+          VITE_WORKOS_API_HOSTNAME: api.workos.com
+        run: |
+          export VITE_CONVEX_URL="${VITE_CONVEX_URL:-https://placeholder.convex.cloud}"
+          export VITE_WORKOS_CLIENT_ID="${VITE_WORKOS_CLIENT_ID:-client_placeholder}"
+          export VITE_WORKOS_REDIRECT_URI="${VITE_WORKOS_REDIRECT_URI:-http://localhost:5173/auth/callback}"
+          npm run build
+      - name: Upload dist artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 3
+
+  deploy:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=moshko --branch=main

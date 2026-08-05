@@ -1,11 +1,13 @@
 import { mutation, query } from "./_generated/server";
-import { v, ConvexError } from "convex/values";
+import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 import type { Id } from "./_generated/dataModel";
+import { workerDisplayName } from "./workers";
 
-/**
- * Resolve worker/client names for CSV import. Optionally create missing entities.
- */
+function matchName(candidate: string, key: string) {
+  return candidate.trim().toLowerCase() === key;
+}
+
 export const resolveImportNames = query({
   args: {
     workerNames: v.array(v.string()),
@@ -21,12 +23,14 @@ export const resolveImportNames = query({
 
     for (const name of args.workerNames) {
       const key = name.trim().toLowerCase();
-      const found = workers.find((w) => w.name.toLowerCase() === key);
+      const found = workers.find((w) =>
+        matchName(workerDisplayName(w), key),
+      );
       workerMap[name] = found?._id ?? null;
     }
     for (const name of args.clientNames) {
       const key = name.trim().toLowerCase();
-      const found = clients.find((c) => c.name.toLowerCase() === key);
+      const found = clients.find((c) => matchName(c.name ?? "", key));
       clientMap[name] = found?._id ?? null;
     }
 
@@ -54,14 +58,19 @@ export const ensureNamedEntities = mutation({
 
     for (const name of args.workers) {
       const trimmed = name.trim();
-      const found = existingWorkers.find(
-        (w) => w.name.toLowerCase() === trimmed.toLowerCase(),
+      const found = existingWorkers.find((w) =>
+        matchName(workerDisplayName(w), trimmed.toLowerCase()),
       );
       if (found) {
         workerIds[trimmed] = found._id;
       } else {
+        const parts = trimmed.split(/\s+/);
+        const firstName = parts[0];
+        const lastName = parts.slice(1).join(" ") || undefined;
         const id = await ctx.db.insert("workers", {
           name: trimmed,
+          firstName,
+          lastName,
           active: true,
         });
         workerIds[trimmed] = id;
@@ -70,19 +79,16 @@ export const ensureNamedEntities = mutation({
 
     for (const c of args.clients) {
       const trimmed = c.name.trim();
-      const found = existingClients.find(
-        (x) => x.name.toLowerCase() === trimmed.toLowerCase(),
+      const found = existingClients.find((x) =>
+        matchName(x.name ?? "", trimmed.toLowerCase()),
       );
       if (found) {
         clientIds[trimmed] = found._id;
       } else {
-        if (c.hourlyRate === undefined || c.hourlyRate < 0) {
-          throw new ConvexError(`Missing rate for new client: ${trimmed}`);
-        }
         const id = await ctx.db.insert("clients", {
           name: trimmed,
           rateMode: "hourly",
-          hourlyRate: c.hourlyRate,
+          hourlyRate: c.hourlyRate ?? 0,
           active: true,
         });
         clientIds[trimmed] = id;

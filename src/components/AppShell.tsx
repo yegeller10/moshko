@@ -1,70 +1,203 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   Clock3,
+  Car,
   Users,
   Building2,
   FileBarChart2,
   Upload,
   Settings,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const links: Array<{
+type NavItem = {
   to: string;
   icon: typeof LayoutDashboard;
   key: string;
   end?: boolean;
-}> = [
+};
+
+const primaryMobile: NavItem[] = [
   { to: "/", icon: LayoutDashboard, key: "dashboard", end: true },
   { to: "/entries", icon: Clock3, key: "entries" },
+  { to: "/expenses", icon: Car, key: "expenses" },
+  { to: "/reports", icon: FileBarChart2, key: "reports" },
+];
+
+const moreMobile: NavItem[] = [
   { to: "/workers", icon: Users, key: "workers" },
   { to: "/clients", icon: Building2, key: "clients" },
-  { to: "/reports", icon: FileBarChart2, key: "reports" },
   { to: "/import", icon: Upload, key: "import" },
   { to: "/settings", icon: Settings, key: "settings" },
 ];
 
+const allLinks: NavItem[] = [...primaryMobile, ...moreMobile];
+
+function BrandMark({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <div className={cn("flex items-center gap-3", compact && "gap-2")}>
+      <img
+        src="/logo.png"
+        alt=""
+        className={cn("object-contain", compact ? "h-8 w-8" : "h-11 w-11")}
+      />
+      <div>
+        <h1
+          className={cn(
+            "font-bold tracking-tight text-ink",
+            compact ? "text-base" : "text-xl",
+          )}
+        >
+          {t("appName")}
+        </h1>
+        {!compact && <p className="text-xs text-brand">{t("tagline")}</p>}
+      </div>
+    </div>
+  );
+}
+
+function linkClass(isActive: boolean, desktop = false) {
+  if (desktop) {
+    return cn(
+      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+      isActive
+        ? "bg-brand-soft text-brand-dark"
+        : "text-muted hover:bg-zinc-100 hover:text-ink",
+    );
+  }
+  return cn(
+    "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 text-[10px] font-medium",
+    isActive ? "text-brand-dark" : "text-muted",
+  );
+}
+
 export function AppShell() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  const moreActive = moreMobile.some(
+    (l) =>
+      location.pathname === l.to || location.pathname.startsWith(`${l.to}/`),
+  );
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    function onPointer(e: MouseEvent | TouchEvent) {
+      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("touchstart", onPointer);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("touchstart", onPointer);
+    };
+  }, [moreOpen]);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col pb-24">
-      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/85 px-4 py-3 backdrop-blur">
-        <div className="flex items-baseline justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-teal-800">
-              {t("appName")}
-            </h1>
-            <p className="text-xs text-slate-500">{t("tagline")}</p>
+    <div className="flex min-h-dvh w-full" dir="ltr">
+      <div className="flex min-h-dvh w-full" dir="rtl">
+        {/* Desktop sidebar — full-height, full app width */}
+        <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-e border-border bg-white px-3 py-4 lg:w-64 md:flex">
+          <div className="mb-6 px-2">
+            <BrandMark />
           </div>
+          <nav className="flex flex-1 flex-col gap-1">
+            {allLinks.map(({ to, icon: Icon, key, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) => linkClass(isActive, true)}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span>{t(`nav.${key}`)}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
+          <header className="sticky top-0 z-20 border-b border-border bg-white px-4 py-2.5 md:px-6 md:py-3">
+            <div className="flex items-center justify-between gap-3 md:hidden">
+              <BrandMark compact />
+            </div>
+            <div className="hidden md:block">
+              <p className="text-sm text-muted">{t("tagline")}</p>
+            </div>
+          </header>
+
+          <main className="w-full flex-1 px-4 py-4 md:px-6 md:py-6 lg:px-8">
+            <Outlet />
+          </main>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 px-4 py-4">
-        <Outlet />
-      </main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto grid max-w-lg grid-cols-7 gap-0.5 px-1 py-1.5">
-          {links.map(({ to, icon: Icon, key, end }) => (
+      {/* Mobile: single-row primary nav + More */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white md:hidden">
+        <div className="flex h-14 items-stretch px-1">
+          {primaryMobile.map(({ to, icon: Icon, key, end }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
-              className={({ isActive }) =>
-                cn(
-                  "flex flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 text-[10px] font-medium",
-                  isActive ? "text-teal-800 bg-teal-50" : "text-slate-500",
-                )
-              }
+              className={({ isActive }) => linkClass(isActive)}
             >
               <Icon className="h-5 w-5" />
-              <span className="truncate max-w-full">{t(`nav.${key}`)}</span>
+              <span className="max-w-full truncate leading-tight">
+                {t(`nav.${key}`)}
+              </span>
             </NavLink>
           ))}
+
+          <div className="relative flex min-w-0 flex-1" ref={moreRef}>
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              aria-label={t("nav.more")}
+              onClick={() => setMoreOpen((v) => !v)}
+              className={linkClass(moreActive || moreOpen)}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+              <span className="leading-tight">{t("nav.more")}</span>
+            </button>
+
+            {moreOpen && (
+              <div className="absolute bottom-[calc(100%+0.5rem)] end-1 z-40 w-52 overflow-hidden rounded-2xl border border-border bg-white shadow-lg">
+                {moreMobile.map(({ to, icon: Icon, key, end }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    onClick={() => setMoreOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3 px-4 py-3 text-sm font-medium",
+                        isActive
+                          ? "bg-brand-soft text-brand-dark"
+                          : "text-ink hover:bg-zinc-50",
+                      )
+                    }
+                  >
+                    <Icon className="h-4 w-4" />
+                    {t(`nav.${key}`)}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+        <div className="h-[env(safe-area-inset-bottom)]" />
       </nav>
     </div>
   );

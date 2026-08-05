@@ -1,23 +1,8 @@
-export type AddonType = "car_drive" | "parking" | "other";
-
-export type AddonInput = {
-  type: AddonType;
-  amount: number;
-  note?: string;
-};
-
 export type ClientRates = {
   rateMode: "hourly" | "daily";
   hourlyRate: number;
   dailyRate?: number;
   extraHourRate?: number;
-  carHourlyRate?: number;
-};
-
-export type EntryCost = {
-  laborCost: number;
-  addonCost: number;
-  lineTotal: number;
 };
 
 export function computeLaborCost(hours: number, rates: ClientRates): number {
@@ -30,33 +15,11 @@ export function computeLaborCost(hours: number, rates: ClientRates): number {
   return round2(hours * rates.hourlyRate);
 }
 
-export function computeAddonCost(
-  addons: AddonInput[],
-  rates: ClientRates,
+export function computeExpenseTotal(
+  quantity: number,
+  unitRate: number,
 ): number {
-  let total = 0;
-  for (const addon of addons) {
-    if (addon.type === "car_drive") {
-      total += addon.amount * (rates.carHourlyRate ?? 0);
-    } else {
-      total += addon.amount;
-    }
-  }
-  return round2(total);
-}
-
-export function computeEntryCost(
-  hours: number,
-  rates: ClientRates,
-  addons: AddonInput[],
-): EntryCost {
-  const laborCost = computeLaborCost(hours, rates);
-  const addonCost = computeAddonCost(addons, rates);
-  return {
-    laborCost,
-    addonCost,
-    lineTotal: round2(laborCost + addonCost),
-  };
+  return round2(quantity * unitRate);
 }
 
 export function round2(n: number): number {

@@ -2,12 +2,14 @@
 
 @theme {
   --font-sans: "Heebo", ui-sans-serif, system-ui, sans-serif;
-  --color-brand: #0f766e;
-  --color-brand-foreground: #f0fdfa;
-  --color-surface: #f8fafc;
-  --color-ink: #0f172a;
-  --color-muted: #64748b;
-  --color-border: #e2e8f0;
+  /* Moshko Productions logo palette */
+  --color-brand: #0b6fc2;
+  --color-brand-dark: #085a9e;
+  --color-brand-soft: #e8f3fb;
+  --color-ink: #0a0a0a;
+  --color-muted: #6b7280;
+  --color-surface: #f4f4f5;
+  --color-border: #e4e4e7;
   --color-danger: #b91c1c;
 }
 
@@ -19,6 +21,8 @@ html,
 body,
 #root {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -26,8 +30,8 @@ body {
   font-family: var(--font-sans);
   color: var(--color-ink);
   background:
-    radial-gradient(1200px 600px at 100% -10%, #ccfbf1 0%, transparent 55%),
-    radial-gradient(900px 500px at -10% 100%, #e0f2fe 0%, transparent 50%),
+    radial-gradient(1000px 480px at 100% -10%, #e8f3fb 0%, transparent 55%),
+    radial-gradient(800px 420px at -10% 110%, #f0f0f0 0%, transparent 50%),
     var(--color-surface);
   -webkit-font-smoothing: antialiased;
 }

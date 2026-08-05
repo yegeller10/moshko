@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  computeAddonCost,
-  computeEntryCost,
+  computeExpenseTotal,
   computeHours,
   computeLaborCost,
 } from "./costs";
@@ -36,30 +35,9 @@ describe("computeLaborCost", () => {
   });
 });
 
-describe("computeAddonCost", () => {
-  it("bills car hours and money addons", () => {
-    expect(
-      computeAddonCost(
-        [
-          { type: "car_drive", amount: 2 },
-          { type: "parking", amount: 30 },
-          { type: "other", amount: 20 },
-        ],
-        { rateMode: "hourly", hourlyRate: 100, carHourlyRate: 40 },
-      ),
-    ).toBe(130);
-  });
-});
-
-describe("computeEntryCost", () => {
-  it("sums labor and addons", () => {
-    const result = computeEntryCost(
-      8,
-      { rateMode: "hourly", hourlyRate: 100, carHourlyRate: 50 },
-      [{ type: "car_drive", amount: 1 }],
-    );
-    expect(result.laborCost).toBe(800);
-    expect(result.addonCost).toBe(50);
-    expect(result.lineTotal).toBe(850);
+describe("computeExpenseTotal", () => {
+  it("multiplies quantity by rate", () => {
+    expect(computeExpenseTotal(2, 40)).toBe(80);
+    expect(computeExpenseTotal(1, 25)).toBe(25);
   });
 });

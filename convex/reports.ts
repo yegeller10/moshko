@@ -1,11 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
-import {
-  computeEntryCost,
-  type ClientRates,
-  type AddonInput,
-} from "./lib/costs";
+import { computeLaborCost, type ClientRates } from "./lib/costs";
 
 function monthRange(yearMonth: string): { from: string; to: string } {
   const [y, m] = yearMonth.split("-").map(Number);
@@ -18,7 +14,7 @@ function monthRange(yearMonth: string): { from: string; to: string } {
 export const monthlyClientReport = query({
   args: {
     clientId: v.id("clients"),
-    yearMonth: v.string(), // YYYY-MM
+    yearMonth: v.string(),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -41,46 +37,69 @@ export const monthlyClientReport = query({
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const rates: ClientRates = {
-      rateMode: client.rateMode,
-      hourlyRate: client.hourlyRate,
+      rateMode: client.rateMode ?? "hourly",
+      hourlyRate: client.hourlyRate ?? 0,
       dailyRate: client.dailyRate,
       extraHourRate: client.extraHourRate,
-      carHourlyRate: client.carHourlyRate,
     };
 
-    const rows = await Promise.all(
+    const laborRows = await Promise.all(
       inMonth.map(async (entry) => {
-        const [worker, addons] = await Promise.all([
-          ctx.db.get(entry.workerId),
-          ctx.db
-            .query("entryAddons")
-            .withIndex("by_entry", (q) => q.eq("entryId", entry._id))
-            .collect(),
-        ]);
-        const addonInputs: AddonInput[] = addons.map((a) => ({
-          type: a.type,
-          amount: a.amount,
-          note: a.note,
-        }));
-        const cost = computeEntryCost(entry.hours, rates, addonInputs);
+        const workerDoc = await ctx.db.get(entry.workerId);
+        const laborCost = computeLaborCost(entry.hours, rates);
         return {
+          kind: "labor" as const,
           entryId: entry._id,
           date: entry.date,
-          workerName: worker?.name ?? "—",
+          label: workerDoc
+            ? [workerDoc.firstName, workerDoc.lastName]
+                .filter(Boolean)
+                .join(" ")
+                .trim() ||
+              workerDoc.name ||
+              "—"
+            : "—",
           location: entry.location,
-          startTime: entry.startTime,
-          endTime: entry.endTime,
-          hours: entry.hours,
-          addons: addonInputs,
-          laborCost: cost.laborCost,
-          addonCost: cost.addonCost,
-          lineTotal: cost.lineTotal,
+          detail: `${entry.startTime}–${entry.endTime}`,
+          quantity: entry.hours,
+          unit: "h",
+          lineTotal: laborCost,
         };
       }),
     );
 
-    const monthTotal = rows.reduce((s, r) => s + r.lineTotal, 0);
-    const totalHours = rows.reduce((s, r) => s + r.hours, 0);
+    const expenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_client_date", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    const expenseRows = expenses
+      .filter((e) => e.date >= from && e.date <= to)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((e) => ({
+        kind: "expense" as const,
+        entryId: e._id,
+        date: e.date,
+        label:
+          e.type === "car" ? "רכב" : e.type === "parking" ? "חניה" : "אחר",
+        location: e.location ?? "—",
+        detail:
+          e.type === "car"
+            ? `${e.quantity}h × ${e.unitRate}`
+            : `${e.quantity} × ${e.unitRate}`,
+        quantity: e.quantity,
+        unit: e.type === "car" ? "h" : "u",
+        lineTotal: e.total,
+        expenseType: e.type,
+      }));
+
+    const rows = [...laborRows, ...expenseRows].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+
+    const laborTotal = laborRows.reduce((s, r) => s + r.lineTotal, 0);
+    const expenseTotal = expenseRows.reduce((s, r) => s + r.lineTotal, 0);
+    const totalHours = laborRows.reduce((s, r) => s + r.quantity, 0);
 
     return {
       client: {
@@ -90,13 +109,14 @@ export const monthlyClientReport = query({
         rateMode: client.rateMode,
         hourlyRate: client.hourlyRate,
         dailyRate: client.dailyRate,
-        carHourlyRate: client.carHourlyRate,
       },
       yearMonth: args.yearMonth,
       overtimeConfigured: rateRules?.overtimeConfigured ?? false,
       rows,
       totalHours,
-      monthTotal,
+      laborTotal,
+      expenseTotal,
+      monthTotal: laborTotal + expenseTotal,
     };
   },
 });
@@ -108,42 +128,40 @@ export const dashboardStats = query({
     const { from, to } = monthRange(args.yearMonth);
     const entries = await ctx.db.query("timeEntries").collect();
     const inMonth = entries.filter((e) => e.date >= from && e.date <= to);
+    const expenses = (await ctx.db.query("expenses").collect()).filter(
+      (e) => e.date >= from && e.date <= to,
+    );
 
     const clients = await ctx.db.query("clients").collect();
     const activeClients = clients.filter((c) => c.active).length;
 
-    let totalCost = 0;
+    let laborCost = 0;
     let totalHours = 0;
 
     for (const entry of inMonth) {
       const client = await ctx.db.get(entry.clientId);
       if (!client) continue;
-      const addons = await ctx.db
-        .query("entryAddons")
-        .withIndex("by_entry", (q) => q.eq("entryId", entry._id))
-        .collect();
-      const cost = computeEntryCost(
-        entry.hours,
-        {
-          rateMode: client.rateMode,
-          hourlyRate: client.hourlyRate,
-          dailyRate: client.dailyRate,
-          extraHourRate: client.extraHourRate,
-          carHourlyRate: client.carHourlyRate,
-        },
-        addons.map((a) => ({ type: a.type, amount: a.amount })),
-      );
-      totalCost += cost.lineTotal;
+      laborCost += computeLaborCost(entry.hours, {
+        rateMode: client.rateMode ?? "hourly",
+        hourlyRate: client.hourlyRate ?? 0,
+        dailyRate: client.dailyRate,
+        extraHourRate: client.extraHourRate,
+      });
       totalHours += entry.hours;
     }
 
-    const clientIds = new Set(inMonth.map((e) => e.clientId));
+    const expenseCost = expenses.reduce((s, e) => s + e.total, 0);
+    const clientIds = new Set([
+      ...inMonth.map((e) => e.clientId),
+      ...expenses.map((e) => e.clientId),
+    ]);
 
     return {
       yearMonth: args.yearMonth,
       entriesCount: inMonth.length,
+      expensesCount: expenses.length,
       totalHours: Math.round(totalHours * 100) / 100,
-      totalCost: Math.round(totalCost * 100) / 100,
+      totalCost: Math.round((laborCost + expenseCost) * 100) / 100,
       activeClients,
       clientsWithWork: clientIds.size,
     };
@@ -171,6 +189,8 @@ export const updateRateRules = mutation({
         thresholdHours: v.union(v.number(), v.null()),
       }),
     ),
+    carHourlyRate: v.optional(v.number()),
+    parkingRate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -182,6 +202,12 @@ export const updateRateRules = mutation({
       await ctx.db.patch(existing._id, {
         overtimeConfigured: args.overtimeConfigured,
         bands: args.bands,
+        ...(args.carHourlyRate !== undefined
+          ? { carHourlyRate: args.carHourlyRate }
+          : {}),
+        ...(args.parkingRate !== undefined
+          ? { parkingRate: args.parkingRate }
+          : {}),
       });
       return existing._id;
     }
@@ -189,6 +215,8 @@ export const updateRateRules = mutation({
       key: "default",
       overtimeConfigured: args.overtimeConfigured,
       bands: args.bands,
+      carHourlyRate: args.carHourlyRate ?? 0,
+      parkingRate: args.parkingRate ?? 0,
     });
   },
 });

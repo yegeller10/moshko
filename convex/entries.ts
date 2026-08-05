@@ -2,25 +2,16 @@ import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 import type { Id } from "./_generated/dataModel";
+import { workerDisplayName } from "./workers";
 
 export function computeHours(startTime: string, endTime: string): number {
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
   const start = sh * 60 + sm;
   let end = eh * 60 + em;
-  if (end < start) end += 24 * 60; // overnight
+  if (end < start) end += 24 * 60;
   return Math.round(((end - start) / 60) * 100) / 100;
 }
-
-const addonValidator = v.object({
-  type: v.union(
-    v.literal("car_drive"),
-    v.literal("parking"),
-    v.literal("other"),
-  ),
-  amount: v.number(),
-  note: v.optional(v.string()),
-});
 
 export const list = query({
   args: {
@@ -52,20 +43,22 @@ export const list = query({
       entries = entries.filter((e) => e.date <= args.toDate!);
     }
 
-    entries.sort((a, b) => b.date.localeCompare(a.date) || b._creationTime - a._creationTime);
+    entries.sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || b._creationTime - a._creationTime,
+    );
     const limited = entries.slice(0, args.limit ?? 200);
 
     return await Promise.all(
       limited.map(async (entry) => {
-        const [worker, client, addons] = await Promise.all([
+        const [workerDoc, client] = await Promise.all([
           ctx.db.get(entry.workerId),
           ctx.db.get(entry.clientId),
-          ctx.db
-            .query("entryAddons")
-            .withIndex("by_entry", (q) => q.eq("entryId", entry._id))
-            .collect(),
         ]);
-        return { ...entry, worker, client, addons };
+        const worker = workerDoc
+          ? { ...workerDoc, name: workerDisplayName(workerDoc) }
+          : null;
+        return { ...entry, worker, client };
       }),
     );
   },
@@ -82,10 +75,13 @@ export const recent = query({
 
     return await Promise.all(
       entries.map(async (entry) => {
-        const [worker, client] = await Promise.all([
+        const [workerDoc, client] = await Promise.all([
           ctx.db.get(entry.workerId),
           ctx.db.get(entry.clientId),
         ]);
+        const worker = workerDoc
+          ? { ...workerDoc, name: workerDisplayName(workerDoc) }
+          : null;
         return { ...entry, worker, client };
       }),
     );
@@ -101,14 +97,13 @@ export const create = mutation({
     startTime: v.string(),
     endTime: v.string(),
     note: v.optional(v.string()),
-    addons: v.optional(v.array(addonValidator)),
   },
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
     const hours = computeHours(args.startTime, args.endTime);
     if (hours <= 0) throw new ConvexError("End time must be after start time");
 
-    const entryId = await ctx.db.insert("timeEntries", {
+    return await ctx.db.insert("timeEntries", {
       workerId: args.workerId,
       clientId: args.clientId,
       location: args.location.trim(),
@@ -120,18 +115,6 @@ export const create = mutation({
       createdBy: user._id,
       createdAt: Date.now(),
     });
-
-    for (const addon of args.addons ?? []) {
-      if (addon.amount <= 0) continue;
-      await ctx.db.insert("entryAddons", {
-        entryId,
-        type: addon.type,
-        amount: addon.amount,
-        note: addon.note?.trim() || undefined,
-      });
-    }
-
-    return entryId;
   },
 });
 
@@ -139,11 +122,6 @@ export const remove = mutation({
   args: { id: v.id("timeEntries") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const addons = await ctx.db
-      .query("entryAddons")
-      .withIndex("by_entry", (q) => q.eq("entryId", args.id))
-      .collect();
-    for (const a of addons) await ctx.db.delete(a._id);
     await ctx.db.delete(args.id);
   },
 });
@@ -159,7 +137,6 @@ export const createMany = mutation({
         startTime: v.string(),
         endTime: v.string(),
         note: v.optional(v.string()),
-        addons: v.optional(v.array(addonValidator)),
       }),
     ),
   },
@@ -181,15 +158,6 @@ export const createMany = mutation({
         createdBy: user._id,
         createdAt: Date.now(),
       });
-      for (const addon of row.addons ?? []) {
-        if (addon.amount <= 0) continue;
-        await ctx.db.insert("entryAddons", {
-          entryId,
-          type: addon.type,
-          amount: addon.amount,
-          note: addon.note?.trim() || undefined,
-        });
-      }
       ids.push(entryId);
     }
     return ids;

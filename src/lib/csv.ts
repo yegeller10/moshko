@@ -1,10 +1,10 @@
 export const CSV_TEMPLATE_HEADER =
-  "worker_name,client_name,location,date,start_time,end_time,car_hours,parking,other_amount,other_note";
+  "worker_name,client_name,location,date,start_time,end_time,note";
 
 export const CSV_TEMPLATE_EXAMPLE = [
   CSV_TEMPLATE_HEADER,
-  "דני כהן,לקוח אלפא,תל אביב,2026-08-01,08:00,16:00,1.5,25,,",
-  "Dana Levi,Client Beta,Haifa,2026-08-02,09:00,17:30,0,0,40,tools",
+  "דני כהן,לקוח אלפא,תל אביב,2026-08-01,08:00,16:00,",
+  "Dana Levi,Client Beta,Haifa,2026-08-02,09:00,17:30,setup",
 ].join("\n");
 
 export type ParsedCsvRow = {
@@ -15,10 +15,7 @@ export type ParsedCsvRow = {
   date: string;
   start_time: string;
   end_time: string;
-  car_hours: number;
-  parking: number;
-  other_amount: number;
-  other_note: string;
+  note: string;
   errors: string[];
 };
 
@@ -46,12 +43,6 @@ function parseCsvLine(line: string): string[] {
   return result;
 }
 
-function num(value: string | undefined): number {
-  if (!value || value === "") return 0;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : NaN;
-}
-
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
@@ -77,10 +68,7 @@ export function parseEntriesCsv(text: string): ParsedCsvRow[] {
         date: "",
         start_time: "",
         end_time: "",
-        car_hours: 0,
-        parking: 0,
-        other_amount: 0,
-        other_note: "",
+        note: "",
         errors: [`Missing columns: ${missing.join(", ")}`],
       },
     ];
@@ -98,10 +86,7 @@ export function parseEntriesCsv(text: string): ParsedCsvRow[] {
     const date = get("date");
     const start_time = get("start_time");
     const end_time = get("end_time");
-    const car_hours = num(get("car_hours"));
-    const parking = num(get("parking"));
-    const other_amount = num(get("other_amount"));
-    const other_note = get("other_note");
+    const note = get("note");
 
     if (!worker_name) errors.push("worker_name required");
     if (!client_name) errors.push("client_name required");
@@ -109,9 +94,6 @@ export function parseEntriesCsv(text: string): ParsedCsvRow[] {
     if (!DATE_RE.test(date)) errors.push("date must be YYYY-MM-DD");
     if (!TIME_RE.test(start_time)) errors.push("start_time must be HH:mm");
     if (!TIME_RE.test(end_time)) errors.push("end_time must be HH:mm");
-    if (Number.isNaN(car_hours)) errors.push("car_hours invalid");
-    if (Number.isNaN(parking)) errors.push("parking invalid");
-    if (Number.isNaN(other_amount)) errors.push("other_amount invalid");
 
     return {
       rowNumber: i + 2,
@@ -121,10 +103,7 @@ export function parseEntriesCsv(text: string): ParsedCsvRow[] {
       date,
       start_time,
       end_time,
-      car_hours,
-      parking,
-      other_amount,
-      other_note,
+      note,
       errors,
     };
   });
