@@ -14,7 +14,7 @@ type WorkerType = "owner" | "employee" | "independent";
 const emptyForm = () => ({
   firstName: "",
   lastName: "",
-  type: "" as "" | WorkerType,
+  type: "employee" as WorkerType,
   idNumber: "",
   birthDate: "",
   address: "",
@@ -37,7 +37,7 @@ export function WorkersPage() {
     await create({
       firstName: form.firstName.trim() || undefined,
       lastName: form.lastName.trim() || undefined,
-      type: form.type || undefined,
+      type: form.type,
       idNumber: form.idNumber.trim() || undefined,
       birthDate: form.birthDate || undefined,
       address: form.address.trim() || undefined,
@@ -86,15 +86,15 @@ export function WorkersPage() {
             <div>
               <Label>{t("workers.type")}</Label>
               <Select
+                required
                 value={form.type}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    type: e.target.value as "" | WorkerType,
+                    type: e.target.value as WorkerType,
                   })
                 }
               >
-                <option value="">—</option>
                 <option value="owner">{t("workers.types.owner")}</option>
                 <option value="employee">{t("workers.types.employee")}</option>
                 <option value="independent">
@@ -137,26 +137,33 @@ export function WorkersPage() {
                 }
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.carLicense}
+            <div>
+              <Label>{t("workers.carLicense")}</Label>
+              <Select
+                value={form.carLicense ? "yes" : "no"}
                 onChange={(e) =>
-                  setForm({ ...form, carLicense: e.target.checked })
+                  setForm({ ...form, carLicense: e.target.value === "yes" })
                 }
-              />
-              {t("workers.carLicense")}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.heightWorkLicense}
+              >
+                <option value="yes">{t("common.yes")}</option>
+                <option value="no">{t("common.no")}</option>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("workers.heightWorkLicense")}</Label>
+              <Select
+                value={form.heightWorkLicense ? "yes" : "no"}
                 onChange={(e) =>
-                  setForm({ ...form, heightWorkLicense: e.target.checked })
+                  setForm({
+                    ...form,
+                    heightWorkLicense: e.target.value === "yes",
+                  })
                 }
-              />
-              {t("workers.heightWorkLicense")}
-            </label>
+              >
+                <option value="yes">{t("common.yes")}</option>
+                <option value="no">{t("common.no")}</option>
+              </Select>
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
