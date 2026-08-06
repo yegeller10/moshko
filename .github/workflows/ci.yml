@@ -24,10 +24,12 @@ jobs:
           VITE_WORKOS_CLIENT_ID: ${{ secrets.VITE_WORKOS_CLIENT_ID }}
           VITE_WORKOS_REDIRECT_URI: ${{ secrets.VITE_WORKOS_REDIRECT_URI }}
           VITE_WORKOS_API_HOSTNAME: api.workos.com
+          VITE_WORKOS_DEV_MODE: "true"
         run: |
           export VITE_CONVEX_URL="${VITE_CONVEX_URL:-https://placeholder.convex.cloud}"
           export VITE_WORKOS_CLIENT_ID="${VITE_WORKOS_CLIENT_ID:-client_placeholder}"
           export VITE_WORKOS_REDIRECT_URI="${VITE_WORKOS_REDIRECT_URI:-http://localhost:5173/auth/callback}"
+          export VITE_WORKOS_DEV_MODE="${VITE_WORKOS_DEV_MODE:-true}"
           npm run build
       - name: Upload dist artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

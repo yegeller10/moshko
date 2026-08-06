@@ -26,7 +26,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!isAuthenticated) {
-      // WorkOS session exists but Convex JWT not ready/valid yet
+      // WorkOS session exists but Convex JWT not ready/valid yet — do not
+      // keep a stale "ok" from an earlier token.
+      ranForUser.current = null;
       setAccess("checking");
       return;
     }

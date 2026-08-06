@@ -7,12 +7,18 @@ const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
 const workosClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as
   | string
   | undefined;
-const redirectUri =
-  (import.meta.env.VITE_WORKOS_REDIRECT_URI as string | undefined) ||
-  `${window.location.origin}/auth/callback`;
 const apiHostname =
   (import.meta.env.VITE_WORKOS_API_HOSTNAME as string | undefined) ||
   "api.workos.com";
+
+/**
+ * Without a WorkOS custom auth domain, AuthKit cannot use HTTP-only cookies on
+ * api.workos.com (third-party cookie blocked). devMode stores the refresh token
+ * in localStorage so authenticate / getAccessToken work on localhost and Pages.
+ * Set VITE_WORKOS_DEV_MODE=false only after a custom auth domain is configured.
+ */
+const workosDevMode =
+  import.meta.env.VITE_WORKOS_DEV_MODE !== "false";
 
 const convex = new ConvexReactClient(
   convexUrl || "https://placeholder.convex.cloud",
@@ -28,7 +34,8 @@ function useConvexWorkOSAuth() {
           forceRefresh: forceRefreshToken,
         });
         return token ?? null;
-      } catch {
+      } catch (err) {
+        console.warn("[auth] getAccessToken failed", err);
         return null;
       }
     },
@@ -67,11 +74,16 @@ export function Root() {
     );
   }
 
+  // Match the current origin so localhost and Pages both work (both must be
+  // registered in the WorkOS dashboard Redirects).
+  const redirectUri = `${window.location.origin}/auth/callback`;
+
   return (
     <AuthKitProvider
       clientId={workosClientId!}
       redirectUri={redirectUri}
       apiHostname={apiHostname}
+      devMode={workosDevMode}
       onRedirectCallback={() => {
         // AuthKit already cleaned the URL; send user into the app shell.
         if (window.location.pathname.startsWith("/auth/")) {
