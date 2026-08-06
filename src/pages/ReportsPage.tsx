@@ -75,12 +75,6 @@ export function ReportsPage() {
 
       {report && (
         <div className="space-y-3">
-          {!report.overtimeConfigured && (
-            <Card className="border-amber-200 bg-amber-50 text-sm text-amber-900">
-              {t("reports.overtimeNote")}
-            </Card>
-          )}
-
           <Card className="space-y-1">
             <p className="font-semibold">{report.client.name}</p>
             <p className="text-sm text-zinc-600">
@@ -114,7 +108,7 @@ export function ReportsPage() {
                     <tr key={`${r.kind}-${r.entryId}`} className="border-t border-zinc-100">
                       <td className="whitespace-nowrap px-3 py-2">{r.date}</td>
                       <td className="px-3 py-2">
-                        {r.kind === "labor"
+                        {r.kind === "job"
                           ? t("reports.labor")
                           : t("reports.expenses")}
                       </td>

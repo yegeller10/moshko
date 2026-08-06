@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
+  CalendarDays,
   Clock3,
   Car,
   Users,
@@ -23,12 +24,13 @@ type NavItem = {
 
 const primaryMobile: NavItem[] = [
   { to: "/", icon: LayoutDashboard, key: "dashboard", end: true },
-  { to: "/entries", icon: Clock3, key: "entries" },
+  { to: "/calendar", icon: CalendarDays, key: "calendar" },
   { to: "/expenses", icon: Car, key: "expenses" },
   { to: "/reports", icon: FileBarChart2, key: "reports" },
 ];
 
 const moreMobile: NavItem[] = [
+  { to: "/entries", icon: Clock3, key: "entries" },
   { to: "/workers", icon: Users, key: "workers" },
   { to: "/clients", icon: Building2, key: "clients" },
   { to: "/import", icon: Upload, key: "import" },

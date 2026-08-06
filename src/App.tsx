@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { CalendarPage } from "@/pages/CalendarPage";
 import { EntriesPage } from "@/pages/EntriesPage";
 import { NewEntryPage } from "@/pages/NewEntryPage";
 import { ExpensesPage } from "@/pages/ExpensesPage";
@@ -29,6 +30,7 @@ export function App() {
             }
           >
             <Route index element={<DashboardPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="entries" element={<EntriesPage />} />
             <Route path="entries/new" element={<NewEntryPage />} />
             <Route path="expenses" element={<ExpensesPage />} />

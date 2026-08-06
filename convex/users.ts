@@ -6,14 +6,18 @@ const DEFAULT_BANDS = [
   { label: "100%", multiplier: 1, thresholdHours: null as number | null },
   { label: "125%", multiplier: 1.25, thresholdHours: null },
   { label: "150%", multiplier: 1.5, thresholdHours: null },
-  { label: "175%", multiplier: 1.75, thresholdHours: null },
-  { label: "200%", multiplier: 2, thresholdHours: null },
 ];
 
 const DEFAULT_SERVICE_RATES = {
   carHourlyRate: 0,
   parkingRate: 0,
 };
+
+const DEFAULT_BILLING_BANDS = [
+  { upToHours: 8 as number | null, multiplier: 1 },
+  { upToHours: 10, multiplier: 1.25 },
+  { upToHours: null, multiplier: 1.5 },
+];
 
 /**
  * After WorkOS Google login: bootstrap first admin, or accept invite, else deny.
@@ -80,9 +84,21 @@ export const ensureAccess = mutation({
       if (!existingRules) {
         await ctx.db.insert("rateRules", {
           key: "default",
-          overtimeConfigured: false,
+          overtimeConfigured: true,
           bands: DEFAULT_BANDS,
           ...DEFAULT_SERVICE_RATES,
+        });
+      }
+
+      const billingRules = await ctx.db.query("billingRules").collect();
+      if (billingRules.length === 0) {
+        await ctx.db.insert("billingRules", {
+          effectiveFrom: "1970-01-01",
+          minBillableHours: 8,
+          bands: DEFAULT_BILLING_BANDS,
+          saturdayMultiplier: 2,
+          createdAt: Date.now(),
+          createdBy: userId,
         });
       }
 

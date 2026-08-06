@@ -56,9 +56,6 @@ export const create = mutation({
     industry: v.optional(v.string()),
     emails: v.optional(v.array(v.string())),
     hourlyRate: v.optional(v.number()),
-    dailyRate: v.optional(v.number()),
-    extraHourRate: v.optional(v.number()),
-    rateMode: v.optional(v.union(v.literal("hourly"), v.literal("daily"))),
     active: v.optional(v.boolean()),
     notes: v.optional(v.string()),
   },
@@ -67,13 +64,7 @@ export const create = mutation({
     const name = args.name?.trim() || undefined;
     const emails = cleanEmails(args.emails);
     const contacts = cleanContacts(args.contacts);
-    const hourlyRate = parseOptionalNumber(args.hourlyRate);
-    const dailyRate = parseOptionalNumber(args.dailyRate);
-    const rateMode =
-      args.rateMode ??
-      (dailyRate !== undefined && hourlyRate === undefined
-        ? "daily"
-        : "hourly");
+    const hourlyRate = parseOptionalNumber(args.hourlyRate) ?? 100;
 
     return await ctx.db.insert("clients", {
       name,
@@ -81,10 +72,7 @@ export const create = mutation({
       industry: args.industry?.trim() || undefined,
       emails: emails.length ? emails : undefined,
       email: emails[0],
-      rateMode,
       hourlyRate,
-      dailyRate,
-      extraHourRate: parseOptionalNumber(args.extraHourRate),
       active: args.active ?? true,
       notes: args.notes?.trim() || undefined,
     });
@@ -99,9 +87,6 @@ export const update = mutation({
     industry: v.optional(v.string()),
     emails: v.optional(v.array(v.string())),
     hourlyRate: v.optional(v.number()),
-    dailyRate: v.optional(v.number()),
-    extraHourRate: v.optional(v.number()),
-    rateMode: v.optional(v.union(v.literal("hourly"), v.literal("daily"))),
     active: v.optional(v.boolean()),
     notes: v.optional(v.string()),
   },
@@ -123,12 +108,7 @@ export const update = mutation({
       patch.email = emails[0];
     }
     if (rest.hourlyRate !== undefined)
-      patch.hourlyRate = parseOptionalNumber(rest.hourlyRate);
-    if (rest.dailyRate !== undefined)
-      patch.dailyRate = parseOptionalNumber(rest.dailyRate);
-    if (rest.extraHourRate !== undefined)
-      patch.extraHourRate = parseOptionalNumber(rest.extraHourRate);
-    if (rest.rateMode !== undefined) patch.rateMode = rest.rateMode;
+      patch.hourlyRate = parseOptionalNumber(rest.hourlyRate) ?? 100;
     if (rest.active !== undefined) patch.active = rest.active;
     if (rest.notes !== undefined) patch.notes = rest.notes.trim() || undefined;
 

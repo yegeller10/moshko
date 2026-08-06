@@ -87,8 +87,7 @@ export const ensureNamedEntities = mutation({
       } else {
         const id = await ctx.db.insert("clients", {
           name: trimmed,
-          rateMode: "hourly",
-          hourlyRate: c.hourlyRate ?? 0,
+          hourlyRate: c.hourlyRate ?? 100,
           active: true,
         });
         clientIds[trimmed] = id;
