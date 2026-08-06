@@ -88,6 +88,8 @@ export const recent = query({
   },
 });
 
+const shiftType = v.union(v.literal("normal"), v.literal("saturday"));
+
 export const create = mutation({
   args: {
     workerId: v.id("workers"),
@@ -96,6 +98,7 @@ export const create = mutation({
     date: v.string(),
     startTime: v.string(),
     endTime: v.string(),
+    shiftType,
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -111,6 +114,7 @@ export const create = mutation({
       startTime: args.startTime,
       endTime: args.endTime,
       hours,
+      shiftType: args.shiftType,
       note: args.note?.trim() || undefined,
       createdBy: user._id,
       createdAt: Date.now(),

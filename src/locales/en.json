@@ -43,6 +43,11 @@
     "client": "Client",
     "location": "Location",
     "date": "Date",
+    "shiftType": "Shift type",
+    "shiftTypes": {
+      "normal": "Normal",
+      "saturday": "Saturday"
+    },
     "start": "Start",
     "end": "End",
     "hours": "Hours",

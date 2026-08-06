@@ -43,6 +43,11 @@
     "client": "לקוח",
     "location": "מיקום",
     "date": "תאריך",
+    "shiftType": "סוג משמרת",
+    "shiftTypes": {
+      "normal": "רגילה",
+      "saturday": "שבת"
+    },
     "start": "התחלה",
     "end": "סיום",
     "hours": "שעות",

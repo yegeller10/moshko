@@ -36,8 +36,11 @@ export function EntriesPage() {
                     {e.worker?.name} → {e.client?.name}
                   </p>
                   <p className="text-xs text-muted">
-                    {e.date} · {e.location} · {e.startTime}–{e.endTime} ·{" "}
-                    {e.hours}h
+                    {e.date} ·{" "}
+                    {t(
+                      `entries.shiftTypes.${e.shiftType === "saturday" ? "saturday" : "normal"}`,
+                    )}{" "}
+                    · {e.location} · {e.startTime}–{e.endTime} · {e.hours}h
                   </p>
                 </div>
                 <Button

@@ -25,6 +25,7 @@ export function NewEntryPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("16:00");
+  const [shiftType, setShiftType] = useState<"normal" | "saturday">("normal");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,7 @@ export function NewEntryPage() {
         date,
         startTime,
         endTime,
+        shiftType,
         note: note || undefined,
       });
       navigate("/entries");
@@ -112,15 +114,33 @@ export function NewEntryPage() {
             onChange={(e) => setLocation(e.target.value)}
           />
         </div>
-        <div>
-          <Label htmlFor="date">{t("entries.date")}</Label>
-          <Input
-            id="date"
-            type="date"
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="date">{t("entries.date")}</Label>
+            <Input
+              id="date"
+              type="date"
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="shiftType">{t("entries.shiftType")}</Label>
+            <Select
+              id="shiftType"
+              required
+              value={shiftType}
+              onChange={(e) =>
+                setShiftType(e.target.value as "normal" | "saturday")
+              }
+            >
+              <option value="normal">{t("entries.shiftTypes.normal")}</option>
+              <option value="saturday">
+                {t("entries.shiftTypes.saturday")}
+              </option>
+            </Select>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

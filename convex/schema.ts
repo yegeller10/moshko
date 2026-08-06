@@ -74,6 +74,10 @@ export default defineSchema({
     startTime: v.string(),
     endTime: v.string(),
     hours: v.number(),
+    /** סוג משמרת — רגילה / שבת */
+    shiftType: v.optional(
+      v.union(v.literal("normal"), v.literal("saturday")),
+    ),
     note: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
