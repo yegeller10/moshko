@@ -15,7 +15,7 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] data-[state=open]:animate-in data-[state=closed]:animate-out",
+      "fixed inset-0 z-[100] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out",
       className,
     )}
     {...props}
@@ -27,21 +27,25 @@ export const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     showClose?: boolean;
+    overlayClassName?: string;
   }
->(({ className, children, showClose = true, ...props }, ref) => (
+>(({ className, children, showClose = true, overlayClassName, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed start-1/2 top-1/2 z-50 flex max-h-[min(92dvh,900px)] w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-xl outline-none",
+        // Physical left/top + translate — logical `start-*` breaks RTL centering
+        // and can push the dialog off-screen on mobile.
+        "fixed left-1/2 top-1/2 z-[110] flex w-[calc(100vw-1.25rem)] max-w-xl max-h-[min(90dvh,920px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-2xl outline-none",
+        "sm:w-[min(100vw-2rem,36rem)]",
         className,
       )}
       {...props}
     >
       {children}
       {showClose && (
-        <DialogPrimitive.Close className="absolute end-3 top-3 rounded-lg p-1.5 text-muted hover:bg-zinc-100 hover:text-ink">
+        <DialogPrimitive.Close className="absolute end-3 top-3 z-10 rounded-lg p-1.5 text-muted hover:bg-zinc-100 hover:text-ink">
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -87,7 +91,7 @@ export function DialogBody({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-4", className)}
+      className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4", className)}
       {...props}
     />
   );

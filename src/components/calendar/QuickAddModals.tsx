@@ -18,6 +18,30 @@ import {
 import type { Id } from "../../../convex/_generated/dataModel";
 
 type WorkerType = "owner" | "employee" | "independent";
+type Contact = { name: string; phone: string };
+
+const emptyWorker = () => ({
+  firstName: "",
+  lastName: "",
+  type: "employee" as WorkerType,
+  idNumber: "",
+  birthDate: "",
+  address: "",
+  phone: "",
+  carLicense: false,
+  heightWorkLicense: false,
+  active: true,
+});
+
+const emptyClient = () => ({
+  name: "",
+  industry: "",
+  notes: "",
+  hourlyRate: "100",
+  active: true,
+  contacts: [{ name: "", phone: "" }] as Contact[],
+  emails: [""] as string[],
+});
 
 export function QuickAddWorkerDialog({
   open,
@@ -31,14 +55,7 @@ export function QuickAddWorkerDialog({
   const { t } = useTranslation();
   const create = useMutation(api.workers.create);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    type: "employee" as WorkerType,
-    phone: "",
-    carLicense: false,
-    heightWorkLicense: false,
-  });
+  const [form, setForm] = useState(emptyWorker);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -48,21 +65,17 @@ export function QuickAddWorkerDialog({
         firstName: form.firstName.trim() || undefined,
         lastName: form.lastName.trim() || undefined,
         type: form.type,
+        idNumber: form.idNumber.trim() || undefined,
+        birthDate: form.birthDate || undefined,
+        address: form.address.trim() || undefined,
         phone: form.phone.trim() || undefined,
         carLicense: form.carLicense,
         heightWorkLicense: form.heightWorkLicense,
-        active: true,
+        active: form.active,
       });
       onCreated(id);
       onOpenChange(false);
-      setForm({
-        firstName: "",
-        lastName: "",
-        type: "employee",
-        phone: "",
-        carLicense: false,
-        heightWorkLicense: false,
-      });
+      setForm(emptyWorker());
     } finally {
       setSaving(false);
     }
@@ -70,11 +83,15 @@ export function QuickAddWorkerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" showClose>
+      <DialogContent
+        className="z-[120] max-w-xl"
+        overlayClassName="z-[115]"
+        showClose
+      >
         <DialogHeader>
           <DialogTitle>{t("calendar.quickAddWorker")}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSave}>
+        <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col">
           <DialogBody className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label>{t("workers.firstName")}</Label>
@@ -92,9 +109,10 @@ export function QuickAddWorkerDialog({
                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
               />
             </div>
-            <div className="sm:col-span-2">
+            <div>
               <Label>{t("workers.type")}</Label>
               <Select
+                required
                 value={form.type}
                 onChange={(e) =>
                   setForm({ ...form, type: e.target.value as WorkerType })
@@ -107,32 +125,77 @@ export function QuickAddWorkerDialog({
                 </option>
               </Select>
             </div>
-            <div className="sm:col-span-2">
+            <div>
+              <Label>{t("workers.idNumber")}</Label>
+              <Input
+                value={form.idNumber}
+                onChange={(e) =>
+                  setForm({ ...form, idNumber: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>{t("workers.birthDate")}</Label>
+              <Input
+                type="date"
+                value={form.birthDate}
+                onChange={(e) =>
+                  setForm({ ...form, birthDate: e.target.value })
+                }
+              />
+            </div>
+            <div>
               <Label>{t("workers.phone")}</Label>
               <Input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.carLicense}
+            <div className="sm:col-span-2">
+              <Label>{t("workers.address")}</Label>
+              <Input
+                value={form.address}
                 onChange={(e) =>
-                  setForm({ ...form, carLicense: e.target.checked })
+                  setForm({ ...form, address: e.target.value })
                 }
               />
-              {t("workers.carLicense")}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
+            </div>
+            <div>
+              <Label>{t("workers.carLicense")}</Label>
+              <Select
+                value={form.carLicense ? "yes" : "no"}
+                onChange={(e) =>
+                  setForm({ ...form, carLicense: e.target.value === "yes" })
+                }
+              >
+                <option value="yes">{t("common.yes")}</option>
+                <option value="no">{t("common.no")}</option>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("workers.heightWorkLicense")}</Label>
+              <Select
+                value={form.heightWorkLicense ? "yes" : "no"}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    heightWorkLicense: e.target.value === "yes",
+                  })
+                }
+              >
+                <option value="yes">{t("common.yes")}</option>
+                <option value="no">{t("common.no")}</option>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
               <input
                 type="checkbox"
-                checked={form.heightWorkLicense}
+                checked={form.active}
                 onChange={(e) =>
-                  setForm({ ...form, heightWorkLicense: e.target.checked })
+                  setForm({ ...form, active: e.target.checked })
                 }
               />
-              {t("workers.heightWorkLicense")}
+              {t("workers.active")}
             </label>
           </DialogBody>
           <DialogFooter>
@@ -165,27 +228,25 @@ export function QuickAddClientDialog({
   const { t } = useTranslation();
   const create = useMutation(api.clients.create);
   const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [hourlyRate, setHourlyRate] = useState("100");
-  const [phone, setPhone] = useState("");
+  const [form, setForm] = useState(emptyClient);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
       const id = await create({
-        name: name.trim() || undefined,
-        hourlyRate: Number(hourlyRate) || 100,
-        contacts: phone.trim()
-          ? [{ name: name.trim() || "—", phone: phone.trim() }]
-          : undefined,
-        active: true,
+        name: form.name.trim() || undefined,
+        industry: form.industry.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+        contacts: form.contacts,
+        emails: form.emails,
+        hourlyRate:
+          form.hourlyRate === "" ? 100 : Number(form.hourlyRate) || 100,
+        active: form.active,
       });
       onCreated(id);
       onOpenChange(false);
-      setName("");
-      setHourlyRate("100");
-      setPhone("");
+      setForm(emptyClient());
     } finally {
       setSaving(false);
     }
@@ -193,34 +254,125 @@ export function QuickAddClientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" showClose>
+      <DialogContent
+        className="z-[120] max-w-xl"
+        overlayClassName="z-[115]"
+        showClose
+      >
         <DialogHeader>
           <DialogTitle>{t("calendar.quickAddClient")}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSave}>
-          <DialogBody className="grid gap-3">
+        <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label>{t("clients.name")}</Label>
               <Input
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
+              <Label>{t("clients.industry")}</Label>
+              <Input
+                value={form.industry}
+                onChange={(e) =>
+                  setForm({ ...form, industry: e.target.value })
+                }
+              />
+            </div>
+            <div className="sm:col-span-2">
               <Label>{t("clients.hourlyRate")}</Label>
               <Input
                 type="number"
                 min="0"
                 step="0.01"
-                value={hourlyRate}
-                onChange={(e) => setHourlyRate(e.target.value)}
+                value={form.hourlyRate}
+                onChange={(e) =>
+                  setForm({ ...form, hourlyRate: e.target.value })
+                }
               />
             </div>
-            <div>
-              <Label>{t("clients.contactPhone")}</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <div className="space-y-2 sm:col-span-2">
+              <Label>{t("clients.contacts")}</Label>
+              {form.contacts.map((c, i) => (
+                <div key={i} className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    placeholder={t("clients.contactName")}
+                    value={c.name}
+                    onChange={(e) => {
+                      const contacts = [...form.contacts];
+                      contacts[i] = { ...contacts[i], name: e.target.value };
+                      setForm({ ...form, contacts });
+                    }}
+                  />
+                  <Input
+                    placeholder={t("clients.contactPhone")}
+                    value={c.phone}
+                    onChange={(e) => {
+                      const contacts = [...form.contacts];
+                      contacts[i] = { ...contacts[i], phone: e.target.value };
+                      setForm({ ...form, contacts });
+                    }}
+                  />
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    contacts: [...form.contacts, { name: "", phone: "" }],
+                  })
+                }
+              >
+                {t("clients.addContact")}
+              </Button>
             </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>{t("clients.emails")}</Label>
+              {form.emails.map((em, i) => (
+                <Input
+                  key={i}
+                  type="email"
+                  value={em}
+                  onChange={(e) => {
+                    const emails = [...form.emails];
+                    emails[i] = e.target.value;
+                    setForm({ ...form, emails });
+                  }}
+                />
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  setForm({ ...form, emails: [...form.emails, ""] })
+                }
+              >
+                {t("clients.addEmail")}
+              </Button>
+            </div>
+            <div className="sm:col-span-2">
+              <Label>{t("clients.notes")}</Label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) =>
+                  setForm({ ...form, active: e.target.checked })
+                }
+              />
+              {t("clients.active")}
+            </label>
           </DialogBody>
           <DialogFooter>
             <Button
@@ -281,11 +433,15 @@ export function QuickAddCityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" showClose>
+      <DialogContent
+        className="z-[120] max-w-md"
+        overlayClassName="z-[115]"
+        showClose
+      >
         <DialogHeader>
           <DialogTitle>{t("calendar.quickAddCity")}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSave}>
+        <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col">
           <DialogBody className="grid gap-3">
             <div>
               <Label>{t("settings.cityName")}</Label>

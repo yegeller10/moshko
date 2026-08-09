@@ -1,0 +1,71 @@
+/* Moshko brand overrides for FullCalendar Monarch theme */
+:root {
+  --fc-monarch-primary: #0b6fc2;
+  --fc-monarch-primary-foreground: #ffffff;
+  --fc-monarch-primary-over: #0a63ae;
+  --fc-monarch-primary-down: #085a9e;
+
+  --fc-monarch-secondary: #e8f3fb;
+  --fc-monarch-secondary-foreground: #085a9e;
+  --fc-monarch-secondary-over: #d9ecf8;
+  --fc-monarch-secondary-down: #c5e1f4;
+
+  --fc-monarch-event: #0b6fc2;
+  --fc-monarch-event-contrast: #ffffff;
+  --fc-monarch-highlight: #0b6fc226;
+  --fc-monarch-now: #dc2626;
+
+  --fc-monarch-selected: #085a9e;
+  --fc-monarch-selected-foreground: #ffffff;
+  --fc-monarch-outline: #0b6fc2;
+
+  --fc-monarch-background: #ffffff;
+  --fc-monarch-foreground: #0a0a0a;
+  --fc-monarch-muted-foreground: #6b7280;
+  --fc-monarch-border: #e4e4e7;
+  --fc-monarch-strong-border: #d4d4d8;
+}
+
+.moshko-calendar .fc {
+  --fc-border-color: var(--fc-monarch-border);
+  height: 100%;
+  font-family: var(--font-sans);
+}
+
+.moshko-calendar .fc .fc-scrollgrid,
+.moshko-calendar .fc .fc-scrollgrid-section > td {
+  border-radius: 0.75rem;
+}
+
+.moshko-calendar .fc .fc-daygrid-day.fc-day-today,
+.moshko-calendar .fc .fc-timegrid-col.fc-day-today {
+  background: #e8f3fb55;
+}
+
+.moshko-calendar .fc .fc-event {
+  border-radius: 0.4rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.moshko-calendar .fc .fc-event.moshko-event-saturday {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #78350f !important;
+}
+
+.moshko-calendar .fc .fc-event.moshko-event-normal {
+  background: #e8f3fb !important;
+  border-color: #0b6fc2 !important;
+  color: #085a9e !important;
+}
+
+.moshko-calendar .fc .fc-daygrid-more-link {
+  font-weight: 600;
+  color: #0b6fc2;
+}
+
+.moshko-calendar .fc-theme-monarch .fc-button {
+  border-radius: 0.5rem;
+}

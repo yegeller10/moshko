@@ -1,0 +1,16 @@
+---
+description: After every meaningful change, commit, push, wait for CI green before continuing
+alwaysApply: true
+---
+
+# Ship and wait for CI
+
+On every meaningful code change for this repo:
+
+1. Run local checks: `npm run typecheck`, `npm run lint`, `npm run test` (and `npm run build` if CI includes it).
+2. Commit the relevant files with a concise message (only when the user asked for the change / expects shipping).
+3. Push to the remote tracking branch (`git push -u origin HEAD` if needed).
+4. Watch GitHub Actions for that commit (`gh run watch` / `gh run list`) and **do not continue with further feature work until CI is green**.
+5. If CI fails, fix the failure, push again, and wait again.
+
+Do not treat local-only success as done. GitHub CI must pass before moving on.
