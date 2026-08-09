@@ -83,6 +83,7 @@ export function AppShell() {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const isCalendar = location.pathname.startsWith("/calendar");
 
   const moreActive = moreMobile.some(
     (l) =>
@@ -107,14 +108,13 @@ export function AppShell() {
   }, [moreOpen]);
 
   return (
-    <div className="flex min-h-dvh w-full" dir="ltr">
-      <div className="flex min-h-dvh w-full" dir="rtl">
-        {/* Desktop sidebar — full-height, full app width */}
+    <div className="flex h-dvh w-full overflow-hidden" dir="ltr">
+      <div className="flex h-dvh w-full min-w-0 overflow-hidden" dir="rtl">
         <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-e border-border bg-white px-3 py-4 lg:w-64 md:flex">
           <div className="mb-6 px-2">
             <BrandMark />
           </div>
-          <nav className="flex flex-1 flex-col gap-1">
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
             {allLinks.map(({ to, icon: Icon, key, end }) => (
               <NavLink
                 key={to}
@@ -129,23 +129,36 @@ export function AppShell() {
           </nav>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
-          <header className="sticky top-0 z-20 border-b border-border bg-white px-4 py-2.5 md:px-6 md:py-3">
-            <div className="flex items-center justify-between gap-3 md:hidden">
-              <BrandMark compact />
-            </div>
-            <div className="hidden md:block">
-              <p className="text-sm text-muted">{t("tagline")}</p>
-            </div>
-          </header>
+        <div
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 flex-col pb-14 md:pb-0",
+            isCalendar && "overflow-hidden",
+          )}
+        >
+          {!isCalendar && (
+            <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-white px-4 py-2.5 md:px-6 md:py-3">
+              <div className="flex items-center justify-between gap-3 md:hidden">
+                <BrandMark compact />
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm text-muted">{t("tagline")}</p>
+              </div>
+            </header>
+          )}
 
-          <main className="w-full flex-1 px-4 py-4 md:px-6 md:py-6 lg:px-8">
+          <main
+            className={cn(
+              "min-h-0 w-full flex-1",
+              isCalendar
+                ? "overflow-hidden p-0"
+                : "overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8",
+            )}
+          >
             <Outlet />
           </main>
         </div>
       </div>
 
-      {/* Mobile: single-row primary nav + More */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white md:hidden">
         <div className="flex h-14 items-stretch px-1">
           {primaryMobile.map(({ to, icon: Icon, key, end }) => (

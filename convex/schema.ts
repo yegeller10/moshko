@@ -60,7 +60,7 @@ const quoteSnapshotValidator = v.object({
 const rateSnapshotValidator = v.object({
   clientHourlyRate: v.number(),
   billingRuleId: v.id("billingRules"),
-  cityVersionId: v.id("cityRateVersions"),
+  cityVersionId: v.optional(v.id("cityRateVersions")),
   effectiveDate: v.string(),
 });
 
@@ -147,7 +147,7 @@ export default defineSchema({
     endTime: v.string(),
     allDay: v.optional(v.boolean()),
     clientId: v.id("clients"),
-    cityId: v.id("cities"),
+    cityId: v.optional(v.id("cities")),
     plannedWorkHours: v.number(),
     actualWorkHours: v.optional(v.number()),
     shiftType: shiftTypeValidator,

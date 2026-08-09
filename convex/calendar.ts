@@ -21,7 +21,7 @@ async function buildQuote(
   ctx: QueryCtx | MutationCtx,
   args: {
     clientId: Id<"clients">;
-    cityId: Id<"cities">;
+    cityId?: Id<"cities">;
     date: string;
     plannedWorkHours: number;
     shiftType: ShiftType;
@@ -31,8 +31,10 @@ async function buildQuote(
 ) {
   const client = await ctx.db.get(args.clientId);
   if (!client) throw new ConvexError("Client not found");
-  const city = await ctx.db.get(args.cityId);
-  if (!city) throw new ConvexError("City not found");
+
+  if (args.includeCar && !args.cityId) {
+    throw new ConvexError("City required when car is included");
+  }
 
   const rules = await ctx.db.query("billingRules").collect();
   const ruleDoc = resolveByEffectiveFrom(rules, args.date);
@@ -42,9 +44,20 @@ async function buildQuote(
     );
   }
 
-  const cityRates = await resolveCityRates(ctx, args.cityId, args.date);
-  if (!cityRates) {
-    throw new ConvexError("No city rates for date — add a rate version");
+  let commuteRateOneWay = 0;
+  let carRate = 0;
+  let cityVersionId: Id<"cityRateVersions"> | undefined;
+
+  if (args.cityId) {
+    const city = await ctx.db.get(args.cityId);
+    if (!city) throw new ConvexError("City not found");
+    const cityRates = await resolveCityRates(ctx, args.cityId, args.date);
+    if (!cityRates) {
+      throw new ConvexError("No city rates for date — add a rate version");
+    }
+    commuteRateOneWay = cityRates.commuteRate;
+    carRate = cityRates.carRate;
+    cityVersionId = cityRates._id;
   }
 
   const hourlyRate = client.hourlyRate ?? 100;
@@ -58,16 +71,16 @@ async function buildQuote(
       bands: ruleDoc.bands,
       saturdayMultiplier: ruleDoc.saturdayMultiplier,
     },
-    commuteRateOneWay: cityRates.commuteRate,
+    commuteRateOneWay,
     includeCar: args.includeCar,
-    carRate: cityRates.carRate,
+    carRate,
   });
 
   return {
     rateSnapshot: {
       clientHourlyRate: hourlyRate,
       billingRuleId: ruleDoc._id,
-      cityVersionId: cityRates._id,
+      cityVersionId,
       effectiveDate: args.date,
     },
     quote,
@@ -77,7 +90,7 @@ async function buildQuote(
 export const previewQuote = query({
   args: {
     clientId: v.id("clients"),
-    cityId: v.id("cities"),
+    cityId: v.optional(v.id("cities")),
     date: v.string(),
     plannedWorkHours: v.number(),
     shiftType,
@@ -120,7 +133,7 @@ export const listInRange = query({
       events.map(async (e) => {
         const [client, city, workers] = await Promise.all([
           ctx.db.get(e.clientId),
-          ctx.db.get(e.cityId),
+          e.cityId ? ctx.db.get(e.cityId) : null,
           Promise.all(e.workerIds.map((id) => ctx.db.get(id))),
         ]);
         return {
@@ -142,7 +155,7 @@ export const get = query({
     if (!e) return null;
     const [client, city, workers] = await Promise.all([
       ctx.db.get(e.clientId),
-      ctx.db.get(e.cityId),
+      e.cityId ? ctx.db.get(e.cityId) : null,
       Promise.all(e.workerIds.map((id) => ctx.db.get(id))),
     ]);
     return { ...e, client, city, workers: workers.filter(Boolean) };
@@ -158,7 +171,7 @@ export const create = mutation({
     endTime: v.string(),
     allDay: v.optional(v.boolean()),
     clientId: v.id("clients"),
-    cityId: v.id("cities"),
+    cityId: v.optional(v.id("cities")),
     plannedWorkHours: v.number(),
     shiftType,
     workerIds: v.array(v.id("workers")),
@@ -223,6 +236,7 @@ export const update = mutation({
     allDay: v.optional(v.boolean()),
     clientId: v.optional(v.id("clients")),
     cityId: v.optional(v.id("cities")),
+    clearCity: v.optional(v.boolean()),
     plannedWorkHours: v.optional(v.number()),
     shiftType: v.optional(shiftType),
     workerIds: v.optional(v.array(v.id("workers"))),
@@ -236,6 +250,10 @@ export const update = mutation({
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new ConvexError("Event not found");
 
+    const cityId = args.clearCity
+      ? undefined
+      : (args.cityId ?? existing.cityId);
+
     const next = {
       title: args.title !== undefined ? args.title.trim() : existing.title,
       notes:
@@ -247,7 +265,7 @@ export const update = mutation({
       endTime: args.endTime ?? existing.endTime,
       allDay: args.allDay ?? existing.allDay,
       clientId: args.clientId ?? existing.clientId,
-      cityId: args.cityId ?? existing.cityId,
+      cityId,
       plannedWorkHours: args.plannedWorkHours ?? existing.plannedWorkHours,
       shiftType: args.shiftType ?? existing.shiftType,
       workerIds: args.workerIds ?? existing.workerIds,
