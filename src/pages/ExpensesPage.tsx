@@ -16,20 +16,22 @@ type ExpenseType = "car" | "parking" | "other";
 export function ExpensesPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "he" ? "he-IL" : "en-IL";
-  const clients = useQuery(api.clients.list, {});
   const rates = useQuery(api.expenses.getServiceRates);
   const expenses = useQuery(api.expenses.list, { limit: 100 });
   const create = useMutation(api.expenses.create);
   const remove = useMutation(api.expenses.remove);
 
   const [type, setType] = useState<ExpenseType>("car");
-  const [clientId, setClientId] = useState("");
+  const [calendarEventId, setCalendarEventId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [location, setLocation] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unitRate, setUnitRate] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const jobs = useQuery(api.calendar.listForAttach, { includeQuotes: true });
+  const approve = useMutation(api.calendar.setStatus);
+  const selectedJob = jobs?.find((job) => job._id === calendarEventId);
 
   const defaultRate =
     type === "car"
@@ -47,12 +49,12 @@ export function ExpensesPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientId || qty <= 0) return;
+    if (!calendarEventId || qty <= 0) return;
     setSaving(true);
     try {
       await create({
         type,
-        clientId: clientId as Id<"clients">,
+        calendarEventId: calendarEventId as Id<"calendarEvents">,
         date,
         location: location || undefined,
         quantity: qty,
@@ -94,19 +96,24 @@ export function ExpensesPage() {
               </Select>
             </div>
             <div>
-              <Label>{t("entries.client")}</Label>
+              <Label>{t("expenses.job")}</Label>
               <Select
                 required
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
+                value={calendarEventId}
+                onChange={(e) => setCalendarEventId(e.target.value)}
               >
                 <option value="">—</option>
-                {(clients ?? []).map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
+                {(jobs ?? []).map((job) => (
+                  <option key={job._id} value={job._id}>
+                    {job.date} · {job.clientName} · {job.title}
                   </option>
                 ))}
               </Select>
+              {selectedJob?.status === "booked" && (
+                <Button type="button" variant="secondary" size="sm" className="mt-2" onClick={() => void approve({ id: selectedJob._id as Id<"calendarEvents">, status: "approved" })}>
+                  {t("entries.approveJob")}
+                </Button>
+              )}
             </div>
             <div>
               <Label>{t("entries.date")}</Label>

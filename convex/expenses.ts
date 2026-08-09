@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 import { round2 } from "./lib/costs";
-
+import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
 async function getRates(ctx: QueryCtx | MutationCtx) {
@@ -17,9 +17,22 @@ async function getRates(ctx: QueryCtx | MutationCtx) {
   };
 }
 
+async function requireAttachableJob(
+  ctx: QueryCtx | MutationCtx,
+  calendarEventId: Id<"calendarEvents">,
+) {
+  const job = await ctx.db.get(calendarEventId);
+  if (!job) throw new ConvexError("Job not found");
+  if (job.status !== "approved" && job.status !== "done") {
+    throw new ConvexError("Job must be approved before adding expenses");
+  }
+  return job;
+}
+
 export const list = query({
   args: {
     clientId: v.optional(v.id("clients")),
+    calendarEventId: v.optional(v.id("calendarEvents")),
     type: v.optional(
       v.union(v.literal("car"), v.literal("parking"), v.literal("other")),
     ),
@@ -29,24 +42,35 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    let rows = args.clientId
+    let rows = args.calendarEventId
       ? await ctx.db
           .query("expenses")
-          .withIndex("by_client_date", (q) => q.eq("clientId", args.clientId!))
+          .withIndex("by_event", (q) =>
+            q.eq("calendarEventId", args.calendarEventId!),
+          )
           .collect()
-      : await ctx.db.query("expenses").withIndex("by_date").collect();
+      : args.clientId
+        ? await ctx.db
+            .query("expenses")
+            .withIndex("by_client_date", (q) =>
+              q.eq("clientId", args.clientId!),
+            )
+            .collect()
+        : await ctx.db.query("expenses").withIndex("by_date").collect();
 
     if (args.type) rows = rows.filter((r) => r.type === args.type);
     if (args.fromDate) rows = rows.filter((r) => r.date >= args.fromDate!);
     if (args.toDate) rows = rows.filter((r) => r.date <= args.toDate!);
     rows.sort(
-      (a, b) => b.date.localeCompare(a.date) || b._creationTime - a._creationTime,
+      (a, b) =>
+        b.date.localeCompare(a.date) || b._creationTime - a._creationTime,
     );
     const limited = rows.slice(0, args.limit ?? 200);
     return await Promise.all(
       limited.map(async (row) => ({
         ...row,
         client: await ctx.db.get(row.clientId),
+        job: await ctx.db.get(row.calendarEventId),
       })),
     );
   },
@@ -54,12 +78,11 @@ export const list = query({
 
 export const create = mutation({
   args: {
+    calendarEventId: v.id("calendarEvents"),
     type: v.union(v.literal("car"), v.literal("parking"), v.literal("other")),
-    clientId: v.id("clients"),
-    date: v.string(),
+    date: v.optional(v.string()),
     location: v.optional(v.string()),
     quantity: v.number(),
-    /** Optional override; defaults from global rates for car/parking */
     unitRate: v.optional(v.number()),
     note: v.optional(v.string()),
   },
@@ -67,6 +90,7 @@ export const create = mutation({
     const { user } = await requireAdmin(ctx);
     if (args.quantity <= 0) throw new ConvexError("Quantity must be positive");
 
+    const job = await requireAttachableJob(ctx, args.calendarEventId);
     const { carHourlyRate, parkingRate } = await getRates(ctx);
     let unitRate = args.unitRate;
     if (unitRate === undefined) {
@@ -78,10 +102,11 @@ export const create = mutation({
 
     const total = round2(args.quantity * unitRate);
     return await ctx.db.insert("expenses", {
+      calendarEventId: args.calendarEventId,
       type: args.type,
-      clientId: args.clientId,
-      date: args.date,
-      location: args.location?.trim() || undefined,
+      clientId: job.clientId,
+      date: args.date ?? job.date,
+      location: args.location?.trim() || job.locationText || undefined,
       quantity: args.quantity,
       unitRate,
       total,

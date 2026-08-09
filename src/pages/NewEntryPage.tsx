@@ -21,14 +21,21 @@ export function NewEntryPage() {
 
   const [workerId, setWorkerId] = useState("");
   const [clientId, setClientId] = useState("");
+  const [calendarEventId, setCalendarEventId] = useState("");
   const [location, setLocation] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("16:00");
+  const [travelHours, setTravelHours] = useState("");
   const [shiftType, setShiftType] = useState<"normal" | "saturday">("normal");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const jobs = useQuery(api.calendar.listForAttach, {
+    ...(clientId ? { clientId: clientId as Id<"clients"> } : {}),
+    includeQuotes: true,
+  });
+  const approve = useMutation(api.calendar.setStatus);
+  const selectedJob = jobs?.find((job) => job._id === calendarEventId);
 
   const hours = useMemo(
     () => computeHours(startTime, endTime),
@@ -38,7 +45,7 @@ export function NewEntryPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!workerId || !clientId || !location.trim()) {
+    if (!workerId || !calendarEventId) {
       setError("missing");
       return;
     }
@@ -46,12 +53,12 @@ export function NewEntryPage() {
     try {
       await create({
         workerId: workerId as Id<"workers">,
-        clientId: clientId as Id<"clients">,
-        location: location.trim(),
-        date,
+        calendarEventId: calendarEventId as Id<"calendarEvents">,
+        location: location.trim() || undefined,
         startTime,
         endTime,
         shiftType,
+        travelHours: travelHours === "" ? undefined : Number(travelHours),
         note: note || undefined,
       });
       navigate("/entries");
@@ -92,9 +99,8 @@ export function NewEntryPage() {
             <Label htmlFor="client">{t("entries.client")}</Label>
             <Select
               id="client"
-              required
               value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
+              onChange={(e) => { setClientId(e.target.value); setCalendarEventId(""); }}
             >
               <option value="">—</option>
               {(clients ?? []).map((c) => (
@@ -106,25 +112,22 @@ export function NewEntryPage() {
           </div>
         </div>
         <div>
+          <Label htmlFor="job">{t("entries.job")}</Label>
+          <Select id="job" required value={calendarEventId} onChange={(e) => setCalendarEventId(e.target.value)}>
+            <option value="">—</option>
+            {(jobs ?? []).map((job) => <option key={job._id} value={job._id}>{job.date} · {job.clientName} · {job.title}</option>)}
+          </Select>
+          {selectedJob?.status === "booked" && <Button type="button" variant="secondary" size="sm" className="mt-2" onClick={() => void approve({ id: selectedJob._id as Id<"calendarEvents">, status: "approved" })}>{t("entries.approveJob")}</Button>}
+        </div>
+        <div>
           <Label htmlFor="location">{t("entries.location")}</Label>
           <Input
             id="location"
-            required
             value={location}
             onChange={(e) => setLocation(e.target.value)}
           />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="date">{t("entries.date")}</Label>
-            <Input
-              id="date"
-              type="date"
-              required
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
           <div>
             <Label htmlFor="shiftType">{t("entries.shiftType")}</Label>
             <Select
@@ -167,6 +170,7 @@ export function NewEntryPage() {
         <p className="text-sm text-brand">
           {t("entries.hours")}: <strong>{hours}</strong>
         </p>
+        <div><Label htmlFor="travelHours">{t("entries.travelHours")}</Label><Input id="travelHours" type="number" min="0" step="0.25" value={travelHours} onChange={(e) => setTravelHours(e.target.value)} /></div>
         <div>
           <Label htmlFor="note">{t("entries.note")}</Label>
           <Textarea

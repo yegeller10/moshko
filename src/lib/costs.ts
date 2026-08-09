@@ -252,3 +252,73 @@ export const DEFAULT_BILLING_RULE: BillingRule = {
   ],
   saturdayMultiplier: 2,
 };
+
+/** Wall-clock hours per OT band + weighted Total H (for Excel reports). */
+export type ReportBandHours = {
+  h100: number;
+  h125: number;
+  h150: number;
+  h200: number;
+  travelHours: number;
+  /** Weighted equivalent hours: Σ(bandHours×multiplier) + travel. */
+  totalH: number;
+  payment: number;
+};
+
+export function buildReportBands(
+  workHours: number,
+  travelHours: number,
+  shiftType: ShiftType,
+  rule: BillingRule,
+  hourlyRate: number,
+): ReportBandHours {
+  const travel = Math.max(0, travelHours);
+  let h100 = 0;
+  let h125 = 0;
+  let h150 = 0;
+  let h200 = 0;
+
+  const billed = Math.max(workHours, rule.minBillableHours);
+
+  if (shiftType === "saturday") {
+    h200 = billed;
+  } else {
+    const bands = [...rule.bands].sort((a, b) => {
+      if (a.upToHours == null) return 1;
+      if (b.upToHours == null) return -1;
+      return a.upToHours - b.upToHours;
+    });
+    let prevCap = 0;
+    let remaining = billed;
+    for (const band of bands) {
+      if (remaining <= 0) break;
+      const cap = band.upToHours ?? Number.POSITIVE_INFINITY;
+      const span = Math.max(0, Math.min(billed, cap) - prevCap);
+      const take = Math.min(remaining, span);
+      if (take > 0) {
+        if (band.multiplier <= 1) h100 += take;
+        else if (band.multiplier <= 1.25) h125 += take;
+        else if (band.multiplier <= 1.5) h150 += take;
+        else h200 += take;
+        remaining -= take;
+      }
+      prevCap = cap;
+    }
+    if (remaining > 0) h150 += remaining;
+  }
+
+  const totalH = round2(
+    h100 * 1 + h125 * 1.25 + h150 * 1.5 + h200 * 2 + travel * 1,
+  );
+  const payment = round2(totalH * hourlyRate);
+
+  return {
+    h100: round2(h100),
+    h125: round2(h125),
+    h150: round2(h150),
+    h200: round2(h200),
+    travelHours: round2(travel),
+    totalH,
+    payment,
+  };
+}

@@ -11,7 +11,6 @@ import {
   parseEntriesCsv,
   type ParsedCsvRow,
 } from "@/lib/csv";
-import type { Id } from "../../convex/_generated/dataModel";
 
 export function ImportPage() {
   const { t } = useTranslation();
@@ -32,13 +31,10 @@ export function ImportPage() {
 
   const resolved = useQuery(
     api.import.resolveImportNames,
-    rows.length
-      ? { workerNames, clientNames }
-      : "skip",
+    rows.length ? { workerNames, clientNames } : "skip",
   );
 
   const ensureEntities = useMutation(api.import.ensureNamedEntities);
-  const createMany = useMutation(api.entries.createMany);
 
   const validRows = rows.filter((r) => r.errors.length === 0);
   const errorRows = rows.filter((r) => r.errors.length > 0);
@@ -49,15 +45,12 @@ export function ImportPage() {
     setStatus(null);
   }
 
-  async function onCommit() {
+  async function onEnsureOnly() {
     setBusy(true);
     setStatus(null);
     try {
-      let workerIds: Record<string, Id<"workers">> = {};
-      let clientIds: Record<string, Id<"clients">> = {};
-
       if (createMissing) {
-        const created = await ensureEntities({
+        await ensureEntities({
           workers: workerNames.filter(
             (n) => resolved && resolved.workerMap[n] == null,
           ),
@@ -65,48 +58,11 @@ export function ImportPage() {
             .filter((n) => resolved && resolved.clientMap[n] == null)
             .map((name) => ({
               name,
-              hourlyRate: Number(defaultRate) || 0,
+              hourlyRate: Number(defaultRate) || 100,
             })),
         });
-        workerIds = created.workerIds as Record<string, Id<"workers">>;
-        clientIds = created.clientIds as Record<string, Id<"clients">>;
       }
-
-      const payload: Array<{
-        workerId: Id<"workers">;
-        clientId: Id<"clients">;
-        location: string;
-        date: string;
-        startTime: string;
-        endTime: string;
-        note?: string;
-      }> = [];
-      for (const row of validRows) {
-        const workerId =
-          (resolved?.workerMap[row.worker_name] as Id<"workers"> | null) ??
-          workerIds[row.worker_name] ??
-          null;
-        const clientId =
-          (resolved?.clientMap[row.client_name] as Id<"clients"> | null) ??
-          clientIds[row.client_name] ??
-          null;
-        if (!workerId || !clientId) {
-          throw new Error(`Missing entity for row ${row.rowNumber}`);
-        }
-        payload.push({
-          workerId,
-          clientId,
-          location: row.location,
-          date: row.date,
-          startTime: row.start_time,
-          endTime: row.end_time,
-          note: row.note || undefined,
-        });
-      }
-
-      await createMany({ rows: payload });
-      setStatus("done");
-      setRows([]);
+      setStatus("entities");
     } catch (e) {
       console.error(e);
       setStatus("error");
@@ -115,38 +71,30 @@ export function ImportPage() {
     }
   }
 
-  const unresolved =
-    resolved &&
-    validRows.some(
-      (r) =>
-        resolved.workerMap[r.worker_name] == null ||
-        resolved.clientMap[r.client_name] == null,
-    );
-
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold">{t("import.title")}</h2>
+    <div className="w-full max-w-3xl space-y-4">
+      <h2 className="text-xl font-bold md:text-2xl">{t("import.title")}</h2>
+      <Card className="space-y-2 text-sm text-muted">
+        <p>{t("import.jobLinkNote")}</p>
+      </Card>
 
       <Card className="space-y-3">
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full"
-          onClick={downloadCsvTemplate}
-        >
-          {t("import.downloadTemplate")}
-        </Button>
-        <div>
-          <Label htmlFor="csv">{t("import.upload")}</Label>
-          <Input
-            id="csv"
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void onFile(f);
-            }}
-          />
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" onClick={() => downloadCsvTemplate()}>
+            {t("import.downloadTemplate")}
+          </Button>
+          <Label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
+            {t("import.upload")}
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onFile(f);
+              }}
+            />
+          </Label>
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -156,57 +104,34 @@ export function ImportPage() {
           />
           {t("import.createMissing")}
         </label>
-        {createMissing && (
-          <div>
-            <Label>{t("import.defaultRate")}</Label>
-            <Input
-              type="number"
-              min="0"
-              value={defaultRate}
-              onChange={(e) => setDefaultRate(e.target.value)}
-            />
-          </div>
-        )}
-      </Card>
-
-      {rows.length > 0 && (
-        <Card className="space-y-2">
-          <p className="text-sm font-semibold">{t("import.preview")}</p>
-          <p className="text-sm text-slate-600">
+        <div>
+          <Label>{t("import.defaultRate")}</Label>
+          <Input
+            type="number"
+            value={defaultRate}
+            onChange={(e) => setDefaultRate(e.target.value)}
+          />
+        </div>
+        {rows.length > 0 && (
+          <p className="text-sm">
             {t("import.okRows")}: {validRows.length} · {t("import.errors")}:{" "}
             {errorRows.length}
           </p>
-          {errorRows.slice(0, 5).map((r) => (
-            <p key={r.rowNumber} className="text-xs text-red-700">
-              #{r.rowNumber}: {r.errors.join(", ")}
-            </p>
-          ))}
-          {unresolved && !createMissing && (
-            <p className="text-xs text-amber-800">
-              Some workers/clients are missing — enable create-missing or add
-              them first.
-            </p>
-          )}
-          <Button
-            className="w-full"
-            disabled={
-              busy ||
-              validRows.length === 0 ||
-              (Boolean(unresolved) && !createMissing)
-            }
-            onClick={() => void onCommit()}
-          >
-            {busy ? t("common.loading") : t("import.commit")}
-          </Button>
-        </Card>
-      )}
-
-      {status === "done" && (
-        <Card className="text-sm text-brand">{t("import.done")}</Card>
-      )}
-      {status === "error" && (
-        <Card className="text-sm text-red-700">{t("common.error")}</Card>
-      )}
+        )}
+        <Button
+          type="button"
+          disabled={busy || !rows.length}
+          onClick={() => void onEnsureOnly()}
+        >
+          {busy ? t("common.loading") : t("import.createMissing")}
+        </Button>
+        {status === "entities" && (
+          <p className="text-sm text-brand">{t("import.done")}</p>
+        )}
+        {status === "error" && (
+          <p className="text-sm text-red-700">{t("common.error")}</p>
+        )}
+      </Card>
     </div>
   );
 }

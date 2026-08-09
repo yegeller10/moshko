@@ -84,6 +84,7 @@ type EventDoc = {
   workerIds: Id<"workers">[];
   includeCar: boolean;
   locationText?: string;
+  status?: "booked" | "approved" | "done" | "cancelled";
 };
 
 export function JobEventDialog({
@@ -123,6 +124,7 @@ export function JobEventDialog({
   const create = useMutation(api.calendar.create);
   const update = useMutation(api.calendar.update);
   const remove = useMutation(api.calendar.remove);
+  const setStatus = useMutation(api.calendar.setStatus);
 
   useEffect(() => {
     if (!open) return;
@@ -245,7 +247,11 @@ export function JobEventDialog({
             <DialogTitle>
               {editing ? t("calendar.edit") : t("calendar.add")}
             </DialogTitle>
-            <DialogDescription>{t("calendar.quoteHint")}</DialogDescription>
+            <DialogDescription>
+              {editing?.status
+                ? `${t("calendar.quoteHint")} · ${t(`calendar.status.${editing.status}`)}`
+                : t("calendar.quoteHint")}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col">
             <DialogBody className="grid gap-3 sm:grid-cols-2">
@@ -484,6 +490,48 @@ export function JobEventDialog({
                   }}
                 >
                   {t("calendar.cancelEvent")}
+                </Button>
+              )}
+              {editing?.status === "booked" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      await setStatus({
+                        id: editing._id,
+                        status: "approved",
+                      });
+                      onOpenChange(false);
+                      onSaved?.();
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  {t("calendar.approve")}
+                </Button>
+              )}
+              {editing?.status === "approved" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!window.confirm(t("calendar.markDoneConfirm"))) return;
+                    setSaving(true);
+                    try {
+                      await setStatus({ id: editing._id, status: "done" });
+                      onOpenChange(false);
+                      onSaved?.();
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  {t("calendar.markDone")}
                 </Button>
               )}
               <Button

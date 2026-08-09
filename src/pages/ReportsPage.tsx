@@ -88,42 +88,28 @@ export function ReportsPage() {
             <p className="text-xs text-muted">{t("reports.emailFuture")}</p>
           </Card>
 
-          {!report.rows.length ? (
+          {!report.groups.length ? (
             <Card className="text-sm text-muted">{t("reports.empty")}</Card>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-border bg-white">
               <table className="min-w-full text-start text-sm">
-                <thead className="bg-zinc-50 text-xs text-zinc-600">
+                <thead className="bg-blue-50 text-xs text-zinc-600">
                   <tr>
-                    <th className="px-3 py-2 font-medium">{t("reports.date")}</th>
-                    <th className="px-3 py-2 font-medium">{t("reports.kind")}</th>
-                    <th className="px-3 py-2 font-medium">{t("reports.worker")}</th>
-                    <th className="px-3 py-2 font-medium">{t("reports.location")}</th>
-                    <th className="px-3 py-2 font-medium">{t("reports.detail")}</th>
-                    <th className="px-3 py-2 font-medium">{t("reports.lineTotal")}</th>
+                    {["name", "enter", "exit", "h100", "h125", "h150", "h200", "travel", "totalH", "rate", "payment"].map((key) => <th key={key} className="whitespace-nowrap px-3 py-2 font-medium">{t(`reports.${key}`)}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {report.rows.map((r) => (
-                    <tr key={`${r.kind}-${r.entryId}`} className="border-t border-zinc-100">
-                      <td className="whitespace-nowrap px-3 py-2">{r.date}</td>
-                      <td className="px-3 py-2">
-                        {r.kind === "job"
-                          ? t("reports.labor")
-                          : t("reports.expenses")}
-                      </td>
-                      <td className="px-3 py-2">{r.label}</td>
-                      <td className="px-3 py-2">{r.location}</td>
-                      <td className="px-3 py-2">{r.detail}</td>
-                      <td className="px-3 py-2 font-medium">
-                        {formatMoney(r.lineTotal, locale)}
-                      </td>
-                    </tr>
-                  ))}
+                  {report.groups.flatMap((group) => [
+                    <tr key={`date-${group.date}`} className="border-t border-zinc-200 bg-zinc-50 font-semibold"><td className="px-3 py-2" colSpan={11}>{group.date} · {formatMoney(group.dayTotal, locale)}</td></tr>,
+                    ...group.rows.map((row) => <tr key={row.id} className="border-t border-zinc-100">
+                      <td className="px-3 py-2">{row.kind === "worker" ? <><strong>{row.name}</strong><span className="block text-xs text-muted">{row.location}</span></> : <><span>{row.name}</span><span className="block text-xs text-muted">{row.location}</span></>}</td>
+                      <td className="px-3 py-2">{row.enter ?? ""}</td><td className="px-3 py-2">{row.exit ?? ""}</td><td className="px-3 py-2">{row.h100 ?? ""}</td><td className="px-3 py-2">{row.h125 ?? ""}</td><td className="px-3 py-2">{row.h150 ?? ""}</td><td className="px-3 py-2">{row.h200 ?? ""}</td><td className="px-3 py-2">{row.travelH ?? ""}</td><td className="px-3 py-2">{row.totalH ?? ""}</td><td className="px-3 py-2">{row.rate === null ? "" : formatMoney(row.rate, locale)}</td><td className="px-3 py-2 font-medium">{formatMoney(row.payment, locale)}</td>
+                    </tr>),
+                  ])}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-border bg-brand-soft font-semibold">
-                    <td className="px-3 py-2" colSpan={5}>
+                    <td className="px-3 py-2" colSpan={10}>
                       {t("reports.monthTotal")}
                     </td>
                     <td className="px-3 py-2">

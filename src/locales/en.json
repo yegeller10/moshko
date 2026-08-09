@@ -57,6 +57,9 @@
     "delete": "Delete",
     "empty": "No entries",
     "saved": "Saved"
+    ,"job": "Job"
+    ,"approveJob": "Approve job"
+    ,"travelHours": "Travel hours"
   },
   "expenses": {
     "title": "Car, parking & expenses",
@@ -73,6 +76,7 @@
     "save": "Save billable",
     "recent": "Recent billables",
     "empty": "No billables yet"
+    ,"job": "Job"
   },
   "workers": {
     "title": "Workers",
@@ -92,7 +96,10 @@
     "carLicense": "Driving license",
     "heightWorkLicense": "Height work license",
     "active": "Active",
-    "empty": "No workers"
+    "empty": "No workers",
+    "open": "Open",
+    "edit": "Edit worker",
+    "summary": "Monthly summary"
   },
   "clients": {
     "title": "Clients",
@@ -113,7 +120,10 @@
     "dailyRate": "Daily rate (₪)",
     "extraHourRate": "Extra hour (₪)",
     "active": "Active",
-    "empty": "No clients"
+    "empty": "No clients",
+    "open": "Open",
+    "edit": "Edit client",
+    "summary": "Monthly summary"
   },
   "calendar": {
     "title": "Calendar",
@@ -152,10 +162,20 @@
       "day": "Day"
     },
     "status": {
-      "booked": "Booked",
+      "booked": "Quote",
+      "quote": "Quote",
+      "approved": "Approved",
       "done": "Done",
       "cancelled": "Cancelled"
-    }
+    },
+    "approve": "Approve",
+    "markDone": "Mark done",
+    "markDoneConfirm": "Mark this job as done?",
+    "addEvent": "Add event",
+    "editEvent": "Edit event",
+    "holiday": "Holiday",
+    "personalEvent": "Personal event",
+    "allDay": "All day"
   },
   "reports": {
     "title": "Reports",
@@ -175,7 +195,18 @@
     "monthTotal": "Month total",
     "totalHours": "Total hours",
     "empty": "No data for this month",
-    "emailFuture": "Email report to client — coming in Phase 2"
+    "emailFuture": "Email report to client — coming in Phase 2",
+    "name": "Name",
+    "enter": "Enter",
+    "exit": "Exit",
+    "h100": "100%",
+    "h125": "125%",
+    "h150": "150%",
+    "h200": "200%",
+    "travel": "Travel",
+    "totalH": "Total H",
+    "rate": "Rate",
+    "payment": "Payment"
   },
   "import": {
     "title": "CSV import",
@@ -187,7 +218,8 @@
     "commit": "Import entries",
     "errors": "Errors",
     "okRows": "Valid rows",
-    "done": "Import complete"
+    "done": "Import complete",
+    "jobLinkNote": "Hour rows must be attached to an approved job. Use this page to create missing workers/clients, then add hours from the Hours screen."
   },
   "settings": {
     "title": "Settings",
@@ -229,6 +261,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "edit": "Edit",
+    "delete": "Delete",
     "actions": "Actions",
     "error": "Error",
     "back": "Back",

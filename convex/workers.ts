@@ -31,6 +31,16 @@ export const list = query({
   },
 });
 
+export const get = query({
+  args: { id: v.id("workers") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const w = await ctx.db.get(args.id);
+    if (!w) return null;
+    return { ...w, displayName: workerDisplayName(w) };
+  },
+});
+
 export const create = mutation({
   args: {
     firstName: v.optional(v.string()),

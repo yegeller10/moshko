@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Id } from "../../convex/_generated/dataModel";
+import { useNavigate } from "react-router-dom";
 
 type Contact = { name: string; phone: string };
 
@@ -26,6 +27,7 @@ export function ClientsPage() {
   const clients = useQuery(api.clients.list, { includeInactive: true });
   const create = useMutation(api.clients.create);
   const update = useMutation(api.clients.update);
+  const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -182,7 +184,10 @@ export function ClientsPage() {
         <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {clients.map((c) => (
             <li key={c._id}>
-              <Card className="flex items-start justify-between gap-2">
+              <Card
+                className="flex items-start justify-between gap-2"
+                onDoubleClick={() => navigate(`/clients/${c._id}`)}
+              >
                 <div className="min-w-0 space-y-0.5">
                   <p className="font-medium">{c.name ?? "—"}</p>
                   {c.industry && (
@@ -192,18 +197,14 @@ export function ClientsPage() {
                     {t("clients.hourlyRate")}: {c.hourlyRate ?? 100} ₪
                   </p>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    void update({
-                      id: c._id as Id<"clients">,
-                      active: !(c.active !== false),
-                    })
-                  }
-                >
-                  {c.active !== false ? "Off" : "On"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => navigate(`/clients/${c._id}`)}>
+                    {t("clients.open")}
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => void update({ id: c._id as Id<"clients">, active: !(c.active !== false) })}>
+                    {c.active !== false ? "Off" : "On"}
+                  </Button>
+                </div>
               </Card>
             </li>
           ))}

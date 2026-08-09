@@ -13,9 +13,25 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 const shiftType = v.union(v.literal("normal"), v.literal("saturday"));
 const statusType = v.union(
   v.literal("booked"),
+  v.literal("approved"),
   v.literal("done"),
   v.literal("cancelled"),
 );
+
+function assertStatusTransition(
+  from: "booked" | "approved" | "done" | "cancelled",
+  to: "booked" | "approved" | "done" | "cancelled",
+) {
+  const ok =
+    (from === "booked" && (to === "approved" || to === "cancelled")) ||
+    (from === "approved" &&
+      (to === "done" || to === "booked" || to === "cancelled")) ||
+    (from === "done" && (to === "approved" || to === "cancelled")) ||
+    (from === "cancelled" && to === "booked");
+  if (!ok) {
+    throw new ConvexError(`Invalid status change: ${from} → ${to}`);
+  }
+}
 
 async function buildQuote(
   ctx: QueryCtx | MutationCtx,
@@ -313,5 +329,75 @@ export const remove = mutation({
       status: "cancelled",
       updatedAt: Date.now(),
     });
+  },
+});
+
+export const setStatus = mutation({
+  args: {
+    id: v.id("calendarEvents"),
+    status: statusType,
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new ConvexError("Event not found");
+    assertStatusTransition(existing.status, args.status);
+    await ctx.db.patch(args.id, {
+      status: args.status,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/** Jobs available for attaching hours/expenses (approved/done, or quotes for approve-inline). */
+export const listForAttach = query({
+  args: {
+    clientId: v.optional(v.id("clients")),
+    fromDate: v.optional(v.string()),
+    toDate: v.optional(v.string()),
+    includeQuotes: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    let rows = args.clientId
+      ? await ctx.db
+          .query("calendarEvents")
+          .withIndex("by_client_date", (q) => q.eq("clientId", args.clientId!))
+          .collect()
+      : await ctx.db.query("calendarEvents").collect();
+
+    const includeQuotes = args.includeQuotes !== false;
+    rows = rows.filter((e) => {
+      if (e.status === "cancelled") return false;
+      if (e.status === "booked") return includeQuotes;
+      return e.status === "approved" || e.status === "done";
+    });
+    if (args.fromDate) rows = rows.filter((e) => e.date >= args.fromDate!);
+    if (args.toDate) rows = rows.filter((e) => e.date <= args.toDate!);
+    rows.sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime),
+    );
+
+    return await Promise.all(
+      rows.slice(0, 100).map(async (e) => {
+        const client = await ctx.db.get(e.clientId);
+        return {
+          _id: e._id,
+          title: e.title,
+          date: e.date,
+          startTime: e.startTime,
+          endTime: e.endTime,
+          status: e.status,
+          clientId: e.clientId,
+          clientName: client?.name ?? "—",
+          locationText: e.locationText,
+          cityId: e.cityId,
+          workerIds: e.workerIds,
+          shiftType: e.shiftType,
+          rateSnapshot: e.rateSnapshot,
+        };
+      }),
+    );
   },
 });

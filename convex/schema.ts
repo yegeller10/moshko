@@ -17,6 +17,13 @@ const shiftTypeValidator = v.union(
   v.literal("saturday"),
 );
 
+const jobStatusValidator = v.union(
+  v.literal("booked"),
+  v.literal("approved"),
+  v.literal("done"),
+  v.literal("cancelled"),
+);
+
 const billingBandValidator = v.object({
   upToHours: v.union(v.number(), v.null()),
   multiplier: v.number(),
@@ -107,7 +114,6 @@ export default defineSchema({
     industry: v.optional(v.string()),
     emails: v.optional(v.array(v.string())),
     email: v.optional(v.string()),
-    /** Base hourly rate (ILS). Default 100 in UI. */
     hourlyRate: v.optional(v.number()),
     active: v.optional(v.boolean()),
     notes: v.optional(v.string()),
@@ -131,7 +137,6 @@ export default defineSchema({
     cityId: v.id("cities"),
     effectiveFrom: v.string(),
     carRate: v.number(),
-    /** Hours charged one direction; math doubles for round-trip. */
     commuteRate: v.number(),
     createdAt: v.number(),
     createdBy: v.id("users"),
@@ -153,11 +158,7 @@ export default defineSchema({
     shiftType: shiftTypeValidator,
     workerIds: v.array(v.id("workers")),
     includeCar: v.boolean(),
-    status: v.union(
-      v.literal("booked"),
-      v.literal("done"),
-      v.literal("cancelled"),
-    ),
+    status: jobStatusValidator,
     locationText: v.optional(v.string()),
     googleCalendarId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
@@ -172,7 +173,25 @@ export default defineSchema({
     .index("by_client_date", ["clientId", "date"])
     .index("by_status", ["status"]),
 
+  /** Non-job labels: Israel holidays + personal events. Never billed. */
+  calendarLabels: defineTable({
+    title: v.string(),
+    date: v.string(),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    allDay: v.boolean(),
+    kind: v.union(v.literal("holiday"), v.literal("personal")),
+    notes: v.optional(v.string()),
+    holidayKey: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+  })
+    .index("by_date", ["date"])
+    .index("by_kind", ["kind"])
+    .index("by_holidayKey", ["holidayKey"]),
+
   timeEntries: defineTable({
+    calendarEventId: v.id("calendarEvents"),
     workerId: v.id("workers"),
     clientId: v.id("clients"),
     location: v.string(),
@@ -180,16 +199,19 @@ export default defineSchema({
     startTime: v.string(),
     endTime: v.string(),
     hours: v.number(),
-    shiftType: v.optional(shiftTypeValidator),
+    travelHours: v.number(),
+    shiftType: shiftTypeValidator,
     note: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
   })
     .index("by_client_date", ["clientId", "date"])
     .index("by_date", ["date"])
-    .index("by_worker", ["workerId"]),
+    .index("by_worker", ["workerId"])
+    .index("by_event", ["calendarEventId"]),
 
   expenses: defineTable({
+    calendarEventId: v.id("calendarEvents"),
     type: v.union(
       v.literal("car"),
       v.literal("parking"),
@@ -207,9 +229,9 @@ export default defineSchema({
   })
     .index("by_client_date", ["clientId", "date"])
     .index("by_date", ["date"])
-    .index("by_type", ["type"]),
+    .index("by_type", ["type"])
+    .index("by_event", ["calendarEventId"]),
 
-  /** Legacy parking/car defaults for standalone expenses page. */
   rateRules: defineTable({
     key: v.literal("default"),
     overtimeConfigured: v.boolean(),

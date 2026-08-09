@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { Id } from "../../convex/_generated/dataModel";
+import { useNavigate } from "react-router-dom";
 
 type WorkerType = "owner" | "employee" | "independent";
 
@@ -29,6 +30,7 @@ export function WorkersPage() {
   const workers = useQuery(api.workers.list, { includeInactive: true });
   const create = useMutation(api.workers.create);
   const update = useMutation(api.workers.update);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
@@ -187,7 +189,10 @@ export function WorkersPage() {
         <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {workers.map((w) => (
             <li key={w._id}>
-              <Card className="flex items-start justify-between gap-2">
+              <Card
+                className="flex items-start justify-between gap-2"
+                onDoubleClick={() => navigate(`/workers/${w._id}`)}
+              >
                 <div className="min-w-0 space-y-0.5">
                   <p className="font-medium">{w.displayName}</p>
                   {w.type && (
@@ -211,18 +216,14 @@ export function WorkersPage() {
                     {w.heightWorkLicense ? t("common.yes") : t("common.no")}
                   </p>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    void update({
-                      id: w._id as Id<"workers">,
-                      active: !(w.active !== false),
-                    })
-                  }
-                >
-                  {w.active !== false ? "Off" : "On"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => navigate(`/workers/${w._id}`)}>
+                    {t("workers.open")}
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => void update({ id: w._id as Id<"workers">, active: !(w.active !== false) })}>
+                    {w.active !== false ? "Off" : "On"}
+                  </Button>
+                </div>
               </Card>
             </li>
           ))}

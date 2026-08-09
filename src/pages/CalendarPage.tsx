@@ -19,6 +19,10 @@ import { Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { JobEventDialog } from "@/components/calendar/JobEventDialog";
+import {
+  CalendarLabelDialog,
+  type LabelDoc,
+} from "@/components/calendar/CalendarLabelDialog";
 import { cn } from "@/lib/utils";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -27,6 +31,8 @@ import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/monarch/theme.css";
 import "@fullcalendar/react/themes/monarch/palettes/blue.css";
 import "@/styles/fullcalendar-moshko.css";
+
+type JobStatus = "booked" | "approved" | "done" | "cancelled";
 
 type CalEvent = {
   _id: Id<"calendarEvents">;
@@ -42,6 +48,7 @@ type CalEvent = {
   workerIds: Id<"workers">[];
   includeCar: boolean;
   locationText?: string;
+  status: JobStatus;
   client?: { name?: string } | null;
 };
 
@@ -73,6 +80,13 @@ function useIsMobileCalendar() {
   return isMobile;
 }
 
+function statusClass(status: JobStatus, saturday: boolean) {
+  if (status === "approved") return "moshko-event-approved";
+  if (status === "done") return "moshko-event-done";
+  if (saturday) return "moshko-event-saturday";
+  return "moshko-event-normal";
+}
+
 export function CalendarPage() {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobileCalendar();
@@ -90,26 +104,54 @@ export function CalendarPage() {
   const [editing, setEditing] = useState<CalEvent | null>(null);
   const [createDate, setCreateDate] = useState<string | undefined>();
   const [createStart, setCreateStart] = useState<string | undefined>();
+  const [labelOpen, setLabelOpen] = useState(false);
+  const [editingLabel, setEditingLabel] = useState<LabelDoc | null>(null);
+  const [labelDate, setLabelDate] = useState<string | undefined>();
 
   const events = useQuery(api.calendar.listInRange, {
     fromDate: range.from,
     toDate: range.to,
   });
+  const labels = useQuery(api.calendarLabels.listInRange, {
+    fromDate: range.from,
+    toDate: range.to,
+  });
 
   const fcEvents = useMemo(() => {
-    return ((events ?? []) as CalEvent[]).map((e) => ({
+    const jobs = ((events ?? []) as CalEvent[]).map((e) => ({
       id: e._id,
       title: e.title,
       start: `${e.date}T${e.startTime}:00`,
       end: `${e.date}T${e.endTime}:00`,
-      classNames: [
-        e.shiftType === "saturday"
-          ? "moshko-event-saturday"
-          : "moshko-event-normal",
-      ],
-      extendedProps: { raw: e },
+      classNames: [statusClass(e.status, e.shiftType === "saturday")],
+      extendedProps: { kind: "job" as const, raw: e },
     }));
-  }, [events]);
+
+    const marks = (labels ?? []).map((l) => {
+      const base = {
+        id: `label-${l._id}`,
+        title: l.title,
+        classNames: [
+          l.kind === "holiday"
+            ? "moshko-label-holiday"
+            : "moshko-label-personal",
+        ],
+        display: "block" as const,
+        extendedProps: { kind: "label" as const, raw: l },
+      };
+      if (l.allDay || !l.startTime || !l.endTime) {
+        return { ...base, start: l.date, allDay: true };
+      }
+      return {
+        ...base,
+        start: `${l.date}T${l.startTime}:00`,
+        end: `${l.date}T${l.endTime}:00`,
+        allDay: false,
+      };
+    });
+
+    return [...marks, ...jobs];
+  }, [events, labels]);
 
   function openCreate(date: string, time?: string) {
     setEditing(null);
@@ -135,7 +177,6 @@ export function CalendarPage() {
   }
 
   function onSelect(arg: DateSelectInfo) {
-    // On mobile, creating is double-tap only (avoid accidental opens while scrolling).
     if (isMobile) {
       calendarRef.current?.getApi().unselect();
       return;
@@ -150,6 +191,13 @@ export function CalendarPage() {
   }
 
   function onEventClick(arg: EventClickInfo) {
+    const kind = arg.event.extendedProps.kind as "job" | "label";
+    if (kind === "label") {
+      setEditingLabel(arg.event.extendedProps.raw as LabelDoc);
+      setLabelDate(undefined);
+      setLabelOpen(true);
+      return;
+    }
     const raw = arg.event.extendedProps.raw as CalEvent | undefined;
     if (raw) openEdit(raw);
   }
@@ -178,6 +226,14 @@ export function CalendarPage() {
   }
 
   function renderEventContent(arg: EventDisplayInfo) {
+    const kind = arg.event.extendedProps.kind as "job" | "label" | undefined;
+    if (kind === "label") {
+      return (
+        <div className="moshko-event-content moshko-label-content">
+          <div className="moshko-event-title">{arg.event.title}</div>
+        </div>
+      );
+    }
     const raw = arg.event.extendedProps.raw as CalEvent | undefined;
     const clientName = raw?.client?.name?.trim();
     return (
@@ -262,6 +318,17 @@ export function CalendarPage() {
           ))}
         </div>
 
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setEditingLabel(null);
+            setLabelDate(toISODate(new Date()));
+            setLabelOpen(true);
+          }}
+        >
+          {t("calendar.addEvent")}
+        </Button>
         <Button size="sm" onClick={() => openCreate(toISODate(new Date()))}>
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">{t("calendar.add")}</span>
@@ -287,13 +354,13 @@ export function CalendarPage() {
           editable={false}
           selectable={!isMobile}
           selectMirror={!isMobile}
-          dayMaxEvents={4}
+          dayMaxEvents={6}
           weekends
           slotMinTime="00:00:00"
           slotMaxTime="24:00:00"
           scrollTime="07:00:00"
           scrollTimeReset={false}
-          allDaySlot={false}
+          allDaySlot
           events={fcEvents}
           datesSet={onDatesSet}
           select={onSelect}
@@ -319,6 +386,12 @@ export function CalendarPage() {
         editing={editing}
         initialDate={createDate}
         initialStartTime={createStart}
+      />
+      <CalendarLabelDialog
+        open={labelOpen}
+        onOpenChange={setLabelOpen}
+        editing={editingLabel}
+        initialDate={labelDate}
       />
     </div>
   );

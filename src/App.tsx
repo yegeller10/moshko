@@ -11,6 +11,8 @@ import { NewEntryPage } from "@/pages/NewEntryPage";
 import { ExpensesPage } from "@/pages/ExpensesPage";
 import { WorkersPage } from "@/pages/WorkersPage";
 import { ClientsPage } from "@/pages/ClientsPage";
+import { ClientDetailPage } from "@/pages/ClientDetailPage";
+import { WorkerDetailPage } from "@/pages/WorkerDetailPage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { ImportPage } from "@/pages/ImportPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -35,7 +37,9 @@ export function App() {
             <Route path="entries/new" element={<NewEntryPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="workers" element={<WorkersPage />} />
+            <Route path="workers/:id" element={<WorkerDetailPage />} />
             <Route path="clients" element={<ClientsPage />} />
+            <Route path="clients/:id" element={<ClientDetailPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="import" element={<ImportPage />} />
             <Route path="settings" element={<SettingsPage />} />

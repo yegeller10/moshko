@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_BILLING_RULE,
+  buildReportBands,
   computeCommute,
   computeExpenseTotal,
   computeHours,
@@ -98,5 +99,26 @@ describe("computeJobQuote", () => {
 describe("computeExpenseTotal", () => {
   it("multiplies quantity by rate", () => {
     expect(computeExpenseTotal(2, 40)).toBe(80);
+  });
+});
+
+describe("buildReportBands", () => {
+  it("weights 9h work as 8@1 + 1@1.25 = 9.25", () => {
+    const r = buildReportBands(9, 0, "normal", DEFAULT_BILLING_RULE, 100);
+    expect(r.h100).toBe(8);
+    expect(r.h125).toBe(1);
+    expect(r.h150).toBe(0);
+    expect(r.totalH).toBe(9.25);
+    expect(r.payment).toBe(925);
+  });
+
+  it("weights 12h work + 3 travel as 16.5", () => {
+    const r = buildReportBands(12, 3, "normal", DEFAULT_BILLING_RULE, 100);
+    expect(r.h100).toBe(8);
+    expect(r.h125).toBe(2);
+    expect(r.h150).toBe(2);
+    expect(r.travelHours).toBe(3);
+    expect(r.totalH).toBe(16.5);
+    expect(r.payment).toBe(1650);
   });
 });
