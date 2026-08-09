@@ -236,8 +236,12 @@ export function CalendarPage() {
     }
     const raw = arg.event.extendedProps.raw as CalEvent | undefined;
     const clientName = raw?.client?.name?.trim();
+    const status = raw?.status ?? "booked";
     return (
       <div className="moshko-event-content">
+        <div className="moshko-event-status">
+          {t(`calendar.statusShort.${status}`)}
+        </div>
         {arg.timeText ? (
           <div className="moshko-event-time">{arg.timeText}</div>
         ) : null}
@@ -333,6 +337,25 @@ export function CalendarPage() {
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">{t("calendar.add")}</span>
         </Button>
+      </div>
+
+      <div className="flex shrink-0 flex-wrap gap-3 border-b border-border px-3 py-1.5 text-[11px] text-muted md:px-4">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-sky-400" />
+          {t("calendar.status.booked")}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />
+          {t("calendar.status.approved")}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-zinc-400" />
+          {t("calendar.status.done")}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-pink-400" />
+          {t("calendar.holiday")}
+        </span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden p-2 md:p-3">

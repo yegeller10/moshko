@@ -135,3 +135,53 @@ export const rename = mutation({
     await ctx.db.patch(args.id, { name });
   },
 });
+
+export const importRows = mutation({
+  args: {
+    rows: v.array(
+      v.object({
+        cityName: v.string(),
+        effectiveFrom: v.string(),
+        carRate: v.number(),
+        commuteRate: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    let createdCities = 0;
+    let versions = 0;
+    const all = await ctx.db.query("cities").collect();
+    const byName = new Map(
+      all.map((c) => [c.name.trim().toLowerCase(), c] as const),
+    );
+    for (const row of args.rows) {
+      const name = row.cityName.trim();
+      if (!name) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(row.effectiveFrom)) {
+        throw new ConvexError(`Invalid date for ${name}`);
+      }
+      const key = name.toLowerCase();
+      let city = byName.get(key);
+      if (!city) {
+        const cityId = await ctx.db.insert("cities", {
+          name,
+          active: true,
+        });
+        city = (await ctx.db.get(cityId))!;
+        byName.set(key, city);
+        createdCities += 1;
+      }
+      await ctx.db.insert("cityRateVersions", {
+        cityId: city._id,
+        effectiveFrom: row.effectiveFrom,
+        carRate: row.carRate,
+        commuteRate: row.commuteRate,
+        createdAt: Date.now(),
+        createdBy: user._id,
+      });
+      versions += 1;
+    }
+    return { createdCities, versions };
+  },
+});

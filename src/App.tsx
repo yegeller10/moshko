@@ -16,6 +16,7 @@ import { WorkerDetailPage } from "@/pages/WorkerDetailPage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { ImportPage } from "@/pages/ImportPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { CitiesPage } from "@/pages/CitiesPage";
 
 export function App() {
   return (
@@ -40,6 +41,7 @@ export function App() {
             <Route path="workers/:id" element={<WorkerDetailPage />} />
             <Route path="clients" element={<ClientsPage />} />
             <Route path="clients/:id" element={<ClientDetailPage />} />
+            <Route path="cities" element={<CitiesPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="import" element={<ImportPage />} />
             <Route path="settings" element={<SettingsPage />} />

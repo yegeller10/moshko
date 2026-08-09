@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@workos-inc/authkit-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -15,16 +16,12 @@ export function SettingsPage() {
   const admins = useQuery(api.users.listAdmins);
   const invites = useQuery(api.users.listInvites);
   const billingRules = useQuery(api.billing.list);
-  const cities = useQuery(api.cities.list, { includeInactive: true });
   const serviceRates = useQuery(api.expenses.getServiceRates);
   const inviteAdmin = useMutation(api.users.inviteAdmin);
   const revokeInvite = useMutation(api.users.revokeInvite);
   const setServiceRates = useMutation(api.expenses.setServiceRates);
   const createBillingVersion = useMutation(api.billing.createVersion);
   const seedBilling = useMutation(api.billing.seedIfEmpty);
-  const createCity = useMutation(api.cities.create);
-  const addCityRates = useMutation(api.cities.addRateVersion);
-  const setCityActive = useMutation(api.cities.setActive);
 
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -41,15 +38,6 @@ export function SettingsPage() {
   const [band11, setBand11] = useState("150");
   const [satMult, setSatMult] = useState("200");
   const [billingMsg, setBillingMsg] = useState<string | null>(null);
-
-  const [cityName, setCityName] = useState("");
-  const [cityFrom, setCityFrom] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  );
-  const [cityCar, setCityCar] = useState("0");
-  const [cityCommute, setCityCommute] = useState("0");
-  const [cityMsg, setCityMsg] = useState<string | null>(null);
-  const [rateCityId, setRateCityId] = useState("");
 
   useEffect(() => {
     if (!serviceRates) return;
@@ -117,40 +105,6 @@ export function SettingsPage() {
       setBillingMsg("ok");
     } catch {
       setBillingMsg("error");
-    }
-  }
-
-  async function onCreateCity(e: React.FormEvent) {
-    e.preventDefault();
-    setCityMsg(null);
-    try {
-      await createCity({
-        name: cityName.trim(),
-        effectiveFrom: cityFrom,
-        carRate: Number(cityCar) || 0,
-        commuteRate: Number(cityCommute) || 0,
-      });
-      setCityName("");
-      setCityMsg("ok");
-    } catch {
-      setCityMsg("error");
-    }
-  }
-
-  async function onAddCityRates(e: React.FormEvent) {
-    e.preventDefault();
-    if (!rateCityId) return;
-    setCityMsg(null);
-    try {
-      await addCityRates({
-        cityId: rateCityId as Id<"cities">,
-        effectiveFrom: cityFrom,
-        carRate: Number(cityCar) || 0,
-        commuteRate: Number(cityCommute) || 0,
-      });
-      setCityMsg("ok");
-    } catch {
-      setCityMsg("error");
     }
   }
 
@@ -269,105 +223,10 @@ export function SettingsPage() {
 
       <Card className="space-y-3">
         <h3 className="font-semibold">{t("settings.cities")}</h3>
-        <p className="text-sm text-muted">{t("settings.citiesHint")}</p>
-        <form onSubmit={onCreateCity} className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label>{t("settings.cityName")}</Label>
-            <Input
-              value={cityName}
-              onChange={(e) => setCityName(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label>{t("settings.effectiveFrom")}</Label>
-            <Input
-              type="date"
-              required
-              value={cityFrom}
-              onChange={(e) => setCityFrom(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>{t("settings.cityCarRate")}</Label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={cityCar}
-              onChange={(e) => setCityCar(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>{t("settings.cityCommuteRate")}</Label>
-            <Input
-              type="number"
-              min="0"
-              step="0.25"
-              value={cityCommute}
-              onChange={(e) => setCityCommute(e.target.value)}
-            />
-          </div>
-          <Button type="submit" className="sm:col-span-2">
-            {t("settings.addCity")}
-          </Button>
-        </form>
-
-        <form onSubmit={onAddCityRates} className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label>{t("settings.updateCityRates")}</Label>
-            <select
-              className="flex h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
-              value={rateCityId}
-              onChange={(e) => setRateCityId(e.target.value)}
-            >
-              <option value="">—</option>
-              {(cities ?? []).map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button type="submit" variant="secondary" className="sm:col-span-2">
-            {t("settings.saveCityVersion")}
-          </Button>
-        </form>
-        {cityMsg === "ok" && (
-          <p className="text-xs text-brand">{t("entries.saved")}</p>
-        )}
-        {cityMsg === "error" && (
-          <p className="text-xs text-red-700">{t("common.error")}</p>
-        )}
-        <ul className="space-y-2 text-sm">
-          {(cities ?? []).map((c) => (
-            <li
-              key={c._id}
-              className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 px-3 py-2"
-            >
-              <div>
-                <p className="font-medium">{c.name}</p>
-                <p className="text-xs text-muted">
-                  {t("settings.cityCarRate")}: {c.currentRates?.carRate ?? "—"}{" "}
-                  · {t("settings.cityCommuteRate")}:{" "}
-                  {c.currentRates?.commuteRate ?? "—"}h
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() =>
-                  void setCityActive({
-                    id: c._id as Id<"cities">,
-                    active: !c.active,
-                  })
-                }
-              >
-                {c.active ? "Off" : "On"}
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <p className="text-sm text-muted">{t("settings.citiesMovedHint")}</p>
+        <Button asChild variant="secondary">
+          <Link to="/cities">{t("settings.openCities")}</Link>
+        </Button>
       </Card>
 
       <Card className="space-y-3">

@@ -243,6 +243,92 @@ export function computeJobQuote(input: {
   };
 }
 
+export type WorkerAssignmentInput = {
+  workerId: string;
+  startTime: string;
+  endTime: string;
+  shiftType: ShiftType;
+  travelHours: number;
+};
+
+/** Sum per-worker quotes; car charged once. */
+export function computeJobQuoteFromAssignments(input: {
+  assignments: Array<{
+    startTime: string;
+    endTime: string;
+    shiftType: ShiftType;
+  }>;
+  hourlyRate: number;
+  rule: BillingRule;
+  commuteRateOneWay: number;
+  includeCar: boolean;
+  carRate: number;
+}): JobQuote {
+  if (input.assignments.length === 0) {
+    return computeJobQuote({
+      workHours: 0,
+      workersCount: 0,
+      shiftType: "normal",
+      hourlyRate: input.hourlyRate,
+      rule: input.rule,
+      commuteRateOneWay: input.commuteRateOneWay,
+      includeCar: input.includeCar,
+      carRate: input.carRate,
+    });
+  }
+
+  let laborTotal = 0;
+  let commuteCost = 0;
+  let commuteHoursTotal = 0;
+  let firstPerWorker: PerWorkerQuote | null = null;
+
+  for (const a of input.assignments) {
+    const workHours = computeHours(a.startTime, a.endTime);
+    const q = computeJobQuote({
+      workHours,
+      workersCount: 1,
+      shiftType: a.shiftType,
+      hourlyRate: input.hourlyRate,
+      rule: input.rule,
+      commuteRateOneWay: input.commuteRateOneWay,
+      includeCar: false,
+      carRate: 0,
+    });
+    laborTotal = round2(laborTotal + q.laborTotal);
+    commuteCost = round2(commuteCost + q.commuteCost);
+    commuteHoursTotal = round2(commuteHoursTotal + q.commuteHoursTotal);
+    if (!firstPerWorker) firstPerWorker = q.perWorker;
+  }
+
+  const carCost = input.includeCar ? round2(input.carRate) : 0;
+  const grandTotal = round2(laborTotal + commuteCost + carCost);
+
+  return {
+    workersCount: input.assignments.length,
+    perWorker: firstPerWorker!,
+    laborTotal,
+    commuteHoursTotal,
+    commuteCost,
+    carCost,
+    grandTotal,
+  };
+}
+
+export function assignmentSpan(assignments: Array<{ startTime: string; endTime: string }>) {
+  if (assignments.length === 0) {
+    return { startTime: "08:00", endTime: "16:00", plannedWorkHours: 0 };
+  }
+  const starts = assignments.map((a) => a.startTime).sort();
+  const ends = assignments.map((a) => a.endTime).sort();
+  const startTime = starts[0]!;
+  const endTime = ends[ends.length - 1]!;
+  let maxH = 0;
+  for (const a of assignments) {
+    maxH = Math.max(maxH, computeHours(a.startTime, a.endTime));
+  }
+  return { startTime, endTime, plannedWorkHours: maxH };
+}
+
 export const DEFAULT_BILLING_RULE: BillingRule = {
   minBillableHours: 8,
   bands: [

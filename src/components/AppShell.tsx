@@ -11,6 +11,7 @@ import {
   FileBarChart2,
   Upload,
   Settings,
+  MapPin,
   MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const moreMobile: NavItem[] = [
   { to: "/entries", icon: Clock3, key: "entries" },
   { to: "/workers", icon: Users, key: "workers" },
   { to: "/clients", icon: Building2, key: "clients" },
+  { to: "/cities", icon: MapPin, key: "cities" },
   { to: "/import", icon: Upload, key: "import" },
   { to: "/settings", icon: Settings, key: "settings" },
 ];

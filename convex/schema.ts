@@ -157,6 +157,17 @@ export default defineSchema({
     actualWorkHours: v.optional(v.number()),
     shiftType: shiftTypeValidator,
     workerIds: v.array(v.id("workers")),
+    workerAssignments: v.optional(
+      v.array(
+        v.object({
+          workerId: v.id("workers"),
+          startTime: v.string(),
+          endTime: v.string(),
+          shiftType: shiftTypeValidator,
+          travelHours: v.number(),
+        }),
+      ),
+    ),
     includeCar: v.boolean(),
     status: jobStatusValidator,
     locationText: v.optional(v.string()),

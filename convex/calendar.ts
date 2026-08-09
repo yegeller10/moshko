@@ -2,13 +2,16 @@ import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 import {
-  computeJobQuote,
+  assignmentSpan,
+  computeHours,
+  computeJobQuoteFromAssignments,
   resolveByEffectiveFrom,
   type ShiftType,
 } from "./lib/costs";
 import { resolveCityRates } from "./cities";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { workerDisplayName } from "./workers";
 
 const shiftType = v.union(v.literal("normal"), v.literal("saturday"));
 const statusType = v.union(
@@ -17,6 +20,22 @@ const statusType = v.union(
   v.literal("done"),
   v.literal("cancelled"),
 );
+
+const assignmentValidator = v.object({
+  workerId: v.id("workers"),
+  startTime: v.string(),
+  endTime: v.string(),
+  shiftType,
+  travelHours: v.number(),
+});
+
+type Assignment = {
+  workerId: Id<"workers">;
+  startTime: string;
+  endTime: string;
+  shiftType: ShiftType;
+  travelHours: number;
+};
 
 function assertStatusTransition(
   from: "booked" | "approved" | "done" | "cancelled",
@@ -33,15 +52,51 @@ function assertStatusTransition(
   }
 }
 
-async function buildQuote(
+export function normalizeAssignments(e: Doc<"calendarEvents">): Assignment[] {
+  if (e.workerAssignments && e.workerAssignments.length > 0) {
+    return e.workerAssignments.map((a) => ({
+      workerId: a.workerId,
+      startTime: a.startTime,
+      endTime: a.endTime,
+      shiftType: a.shiftType,
+      travelHours: a.travelHours,
+    }));
+  }
+  return e.workerIds.map((workerId) => ({
+    workerId,
+    startTime: e.startTime,
+    endTime: e.endTime,
+    shiftType: e.shiftType,
+    travelHours: 0,
+  }));
+}
+
+function validateAssignments(assignments: Assignment[]) {
+  if (assignments.length === 0) {
+    throw new ConvexError("Select at least one worker");
+  }
+  const seen = new Set<string>();
+  for (const a of assignments) {
+    if (seen.has(a.workerId)) {
+      throw new ConvexError("Duplicate worker on job");
+    }
+    seen.add(a.workerId);
+    if (computeHours(a.startTime, a.endTime) <= 0) {
+      throw new ConvexError("Each worker needs a positive hour range");
+    }
+    if (a.travelHours < 0) {
+      throw new ConvexError("Travel hours cannot be negative");
+    }
+  }
+}
+
+async function buildQuoteFromAssignments(
   ctx: QueryCtx | MutationCtx,
   args: {
     clientId: Id<"clients">;
     cityId?: Id<"cities">;
     date: string;
-    plannedWorkHours: number;
-    shiftType: ShiftType;
-    workerIds: Id<"workers">[];
+    assignments: Assignment[];
     includeCar: boolean;
   },
 ) {
@@ -70,7 +125,7 @@ async function buildQuote(
     const cityRates = await resolveCityRates(ctx, args.cityId, args.date);
     if (!cityRates) {
       throw new ConvexError(
-        "No city rates for this job date — edit the city in Settings or re-add rates with an earlier effective date",
+        "No city rates for this job date — edit the city on the Cities page",
       );
     }
     commuteRateOneWay = cityRates.commuteRate;
@@ -79,10 +134,8 @@ async function buildQuote(
   }
 
   const hourlyRate = client.hourlyRate ?? 100;
-  const quote = computeJobQuote({
-    workHours: args.plannedWorkHours,
-    workersCount: args.workerIds.length,
-    shiftType: args.shiftType,
+  const quote = computeJobQuoteFromAssignments({
+    assignments: args.assignments,
     hourlyRate,
     rule: {
       minBillableHours: ruleDoc.minBillableHours,
@@ -105,20 +158,109 @@ async function buildQuote(
   };
 }
 
+async function materializeAssignments(
+  ctx: MutationCtx,
+  job: Doc<"calendarEvents">,
+  assignments: Assignment[],
+  userId: Id<"users">,
+) {
+  const existing = await ctx.db
+    .query("timeEntries")
+    .withIndex("by_event", (q) => q.eq("calendarEventId", job._id))
+    .collect();
+  const byWorker = new Map(existing.map((e) => [e.workerId, e]));
+  const location = job.locationText?.trim() || "—";
+
+  for (const a of assignments) {
+    const hours = computeHours(a.startTime, a.endTime);
+    const prev = byWorker.get(a.workerId);
+    if (prev) {
+      await ctx.db.patch(prev._id, {
+        date: job.date,
+        clientId: job.clientId,
+        location: prev.location || location,
+        startTime: a.startTime,
+        endTime: a.endTime,
+        hours,
+        travelHours: a.travelHours,
+        shiftType: a.shiftType,
+      });
+      byWorker.delete(a.workerId);
+    } else {
+      await ctx.db.insert("timeEntries", {
+        calendarEventId: job._id,
+        workerId: a.workerId,
+        clientId: job.clientId,
+        location,
+        date: job.date,
+        startTime: a.startTime,
+        endTime: a.endTime,
+        hours,
+        travelHours: a.travelHours,
+        shiftType: a.shiftType,
+        createdBy: userId,
+        createdAt: Date.now(),
+      });
+    }
+  }
+}
+
+async function enrichJob(ctx: QueryCtx, e: Doc<"calendarEvents">) {
+  const assignments = normalizeAssignments(e);
+  const [client, city, workers, timeEntries, expenses] = await Promise.all([
+    ctx.db.get(e.clientId),
+    e.cityId ? ctx.db.get(e.cityId) : null,
+    Promise.all(assignments.map((a) => ctx.db.get(a.workerId))),
+    ctx.db
+      .query("timeEntries")
+      .withIndex("by_event", (q) => q.eq("calendarEventId", e._id))
+      .collect(),
+    ctx.db
+      .query("expenses")
+      .withIndex("by_event", (q) => q.eq("calendarEventId", e._id))
+      .collect(),
+  ]);
+
+  const entriesEnriched = await Promise.all(
+    timeEntries.map(async (entry) => {
+      const w = await ctx.db.get(entry.workerId);
+      return {
+        ...entry,
+        workerName: w ? workerDisplayName(w) : "—",
+      };
+    }),
+  );
+
+  return {
+    ...e,
+    workerAssignments: assignments,
+    workerIds: assignments.map((a) => a.workerId),
+    client,
+    city,
+    workers: workers.filter(Boolean),
+    linkedEntries: entriesEnriched,
+    linkedExpenses: expenses,
+  };
+}
+
 export const previewQuote = query({
   args: {
     clientId: v.id("clients"),
     cityId: v.optional(v.id("cities")),
     date: v.string(),
-    plannedWorkHours: v.number(),
-    shiftType,
-    workerIds: v.array(v.id("workers")),
+    workerAssignments: v.array(assignmentValidator),
     includeCar: v.boolean(),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     try {
-      return await buildQuote(ctx, args);
+      return await buildQuoteFromAssignments(ctx, {
+        clientId: args.clientId,
+        cityId: args.cityId,
+        date: args.date,
+        assignments: args.workerAssignments,
+        includeCar: args.includeCar,
+      });
     } catch (e) {
       if (e instanceof ConvexError) return { error: e.data as string };
       throw e;
@@ -147,21 +289,7 @@ export const listInRange = query({
           a.startTime.localeCompare(b.startTime),
       );
 
-    return await Promise.all(
-      events.map(async (e) => {
-        const [client, city, workers] = await Promise.all([
-          ctx.db.get(e.clientId),
-          e.cityId ? ctx.db.get(e.cityId) : null,
-          Promise.all(e.workerIds.map((id) => ctx.db.get(id))),
-        ]);
-        return {
-          ...e,
-          client,
-          city,
-          workers: workers.filter(Boolean),
-        };
-      }),
-    );
+    return await Promise.all(events.map((e) => enrichJob(ctx, e)));
   },
 });
 
@@ -171,12 +299,7 @@ export const get = query({
     await requireAdmin(ctx);
     const e = await ctx.db.get(args.id);
     if (!e) return null;
-    const [client, city, workers] = await Promise.all([
-      ctx.db.get(e.clientId),
-      e.cityId ? ctx.db.get(e.cityId) : null,
-      Promise.all(e.workerIds.map((id) => ctx.db.get(id))),
-    ]);
-    return { ...e, client, city, workers: workers.filter(Boolean) };
+    return await enrichJob(ctx, e);
   },
 });
 
@@ -185,14 +308,10 @@ export const create = mutation({
     title: v.string(),
     notes: v.optional(v.string()),
     date: v.string(),
-    startTime: v.string(),
-    endTime: v.string(),
     allDay: v.optional(v.boolean()),
     clientId: v.id("clients"),
     cityId: v.optional(v.id("cities")),
-    plannedWorkHours: v.number(),
-    shiftType,
-    workerIds: v.array(v.id("workers")),
+    workerAssignments: v.array(assignmentValidator),
     includeCar: v.boolean(),
     locationText: v.optional(v.string()),
     status: v.optional(statusType),
@@ -201,38 +320,34 @@ export const create = mutation({
     const { user } = await requireAdmin(ctx);
     const title = args.title.trim();
     if (!title) throw new ConvexError("Title required");
-    if (args.plannedWorkHours <= 0) {
-      throw new ConvexError("Work hours must be positive");
-    }
-    if (args.workerIds.length === 0) {
-      throw new ConvexError("Select at least one worker");
-    }
+    validateAssignments(args.workerAssignments);
 
-    const { rateSnapshot, quote } = await buildQuote(ctx, {
+    const span = assignmentSpan(args.workerAssignments);
+    const { rateSnapshot, quote } = await buildQuoteFromAssignments(ctx, {
       clientId: args.clientId,
       cityId: args.cityId,
       date: args.date,
-      plannedWorkHours: args.plannedWorkHours,
-      shiftType: args.shiftType,
-      workerIds: args.workerIds,
+      assignments: args.workerAssignments,
       includeCar: args.includeCar,
     });
 
     const now = Date.now();
-    return await ctx.db.insert("calendarEvents", {
+    const status = args.status ?? "booked";
+    const id = await ctx.db.insert("calendarEvents", {
       title,
       notes: args.notes?.trim() || undefined,
       date: args.date,
-      startTime: args.startTime,
-      endTime: args.endTime,
+      startTime: span.startTime,
+      endTime: span.endTime,
       allDay: args.allDay,
       clientId: args.clientId,
       cityId: args.cityId,
-      plannedWorkHours: args.plannedWorkHours,
-      shiftType: args.shiftType,
-      workerIds: args.workerIds,
+      plannedWorkHours: span.plannedWorkHours,
+      shiftType: args.workerAssignments[0]!.shiftType,
+      workerIds: args.workerAssignments.map((a) => a.workerId),
+      workerAssignments: args.workerAssignments,
       includeCar: args.includeCar,
-      status: args.status ?? "booked",
+      status,
       locationText: args.locationText?.trim() || undefined,
       rateSnapshot,
       quote,
@@ -240,6 +355,20 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    if (status === "approved" || status === "done") {
+      const job = await ctx.db.get(id);
+      if (job) {
+        await materializeAssignments(
+          ctx,
+          job,
+          args.workerAssignments,
+          user._id,
+        );
+      }
+    }
+
+    return id;
   },
 });
 
@@ -249,28 +378,29 @@ export const update = mutation({
     title: v.optional(v.string()),
     notes: v.optional(v.string()),
     date: v.optional(v.string()),
-    startTime: v.optional(v.string()),
-    endTime: v.optional(v.string()),
     allDay: v.optional(v.boolean()),
     clientId: v.optional(v.id("clients")),
     cityId: v.optional(v.id("cities")),
     clearCity: v.optional(v.boolean()),
-    plannedWorkHours: v.optional(v.number()),
-    shiftType: v.optional(shiftType),
-    workerIds: v.optional(v.array(v.id("workers"))),
+    workerAssignments: v.optional(v.array(assignmentValidator)),
     includeCar: v.optional(v.boolean()),
     locationText: v.optional(v.string()),
     status: v.optional(statusType),
     actualWorkHours: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const { user } = await requireAdmin(ctx);
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new ConvexError("Event not found");
 
     const cityId = args.clearCity
       ? undefined
       : (args.cityId ?? existing.cityId);
+
+    const assignments =
+      args.workerAssignments ?? normalizeAssignments(existing);
+    validateAssignments(assignments);
+    const span = assignmentSpan(assignments);
 
     const next = {
       title: args.title !== undefined ? args.title.trim() : existing.title,
@@ -279,14 +409,15 @@ export const update = mutation({
           ? args.notes.trim() || undefined
           : existing.notes,
       date: args.date ?? existing.date,
-      startTime: args.startTime ?? existing.startTime,
-      endTime: args.endTime ?? existing.endTime,
+      startTime: span.startTime,
+      endTime: span.endTime,
       allDay: args.allDay ?? existing.allDay,
       clientId: args.clientId ?? existing.clientId,
       cityId,
-      plannedWorkHours: args.plannedWorkHours ?? existing.plannedWorkHours,
-      shiftType: args.shiftType ?? existing.shiftType,
-      workerIds: args.workerIds ?? existing.workerIds,
+      plannedWorkHours: span.plannedWorkHours,
+      shiftType: assignments[0]!.shiftType,
+      workerIds: assignments.map((a) => a.workerId),
+      workerAssignments: assignments,
       includeCar: args.includeCar ?? existing.includeCar,
       locationText:
         args.locationText !== undefined
@@ -300,17 +431,12 @@ export const update = mutation({
     };
 
     if (!next.title) throw new ConvexError("Title required");
-    if (next.workerIds.length === 0) {
-      throw new ConvexError("Select at least one worker");
-    }
 
-    const { rateSnapshot, quote } = await buildQuote(ctx, {
+    const { rateSnapshot, quote } = await buildQuoteFromAssignments(ctx, {
       clientId: next.clientId,
       cityId: next.cityId,
       date: next.date,
-      plannedWorkHours: next.plannedWorkHours,
-      shiftType: next.shiftType,
-      workerIds: next.workerIds,
+      assignments,
       includeCar: next.includeCar,
     });
 
@@ -320,6 +446,13 @@ export const update = mutation({
       quote,
       updatedAt: Date.now(),
     });
+
+    if (next.status === "approved" || next.status === "done") {
+      const job = await ctx.db.get(args.id);
+      if (job) {
+        await materializeAssignments(ctx, job, assignments, user._id);
+      }
+    }
   },
 });
 
@@ -340,7 +473,7 @@ export const setStatus = mutation({
     status: statusType,
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const { user } = await requireAdmin(ctx);
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new ConvexError("Event not found");
     assertStatusTransition(existing.status, args.status);
@@ -348,10 +481,20 @@ export const setStatus = mutation({
       status: args.status,
       updatedAt: Date.now(),
     });
+    if (args.status === "approved" || args.status === "done") {
+      const job = await ctx.db.get(args.id);
+      if (job) {
+        await materializeAssignments(
+          ctx,
+          job,
+          normalizeAssignments(job),
+          user._id,
+        );
+      }
+    }
   },
 });
 
-/** Jobs available for attaching hours/expenses (approved/done, or quotes for approve-inline). */
 export const listForAttach = query({
   args: {
     clientId: v.optional(v.id("clients")),

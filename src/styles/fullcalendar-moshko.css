@@ -69,6 +69,14 @@
   word-break: break-word;
 }
 
+.moshko-calendar .moshko-event-status {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.9;
+}
+
 .moshko-calendar .moshko-event-time {
   font-size: 0.65rem;
   font-weight: 700;
