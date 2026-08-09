@@ -49,6 +49,45 @@
   cursor: pointer;
 }
 
+.moshko-calendar .fc .fc-event .fc-event-main {
+  overflow: hidden;
+}
+
+.moshko-calendar .fc .fc-daygrid-event {
+  white-space: normal;
+}
+
+.moshko-calendar .moshko-event-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 1px 3px;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.moshko-calendar .moshko-event-time {
+  font-size: 0.65rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.moshko-calendar .moshko-event-title {
+  font-weight: 700;
+}
+
+.moshko-calendar .moshko-event-client {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.moshko-calendar .fc .fc-timegrid-event .moshko-event-content {
+  height: 100%;
+}
+
 .moshko-calendar .fc .fc-event.moshko-event-saturday {
   background: #fef3c7 !important;
   border-color: #f59e0b !important;

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import FullCalendar from "@fullcalendar/react";
@@ -13,6 +13,7 @@ import type {
   DateSelectInfo,
   DatesSetInfo,
   EventClickInfo,
+  EventDisplayInfo,
 } from "@fullcalendar/react";
 import { Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
@@ -54,9 +55,29 @@ function toISODate(d: Date) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+function useIsMobileCalendar() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 767px), (pointer: coarse)").matches
+      : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px), (pointer: coarse)");
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  return isMobile;
+}
+
 export function CalendarPage() {
   const { t, i18n } = useTranslation();
+  const isMobile = useIsMobileCalendar();
   const calendarRef = useRef<CalendarRef>(null);
+  const lastTapRef = useRef<{ key: string; at: number } | null>(null);
   const [range, setRange] = useState(() => {
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -114,6 +135,11 @@ export function CalendarPage() {
   }
 
   function onSelect(arg: DateSelectInfo) {
+    // On mobile, creating is double-tap only (avoid accidental opens while scrolling).
+    if (isMobile) {
+      calendarRef.current?.getApi().unselect();
+      return;
+    }
     const date = toISODate(arg.start);
     const time =
       arg.view.type === "dayGridMonth"
@@ -129,11 +155,42 @@ export function CalendarPage() {
   }
 
   function onDateClick(arg: DateClickInfo) {
+    const date = arg.dateStr.slice(0, 10);
     const time =
       arg.view.type === "dayGridMonth"
         ? undefined
         : `${pad2(arg.date.getHours())}:${pad2(arg.date.getMinutes())}`;
-    openCreate(arg.dateStr.slice(0, 10), time);
+    const key = `${date}|${time ?? "allday"}|${arg.view.type}`;
+
+    if (isMobile) {
+      const now = Date.now();
+      const prev = lastTapRef.current;
+      if (prev && prev.key === key && now - prev.at < 400) {
+        lastTapRef.current = null;
+        openCreate(date, time);
+      } else {
+        lastTapRef.current = { key, at: now };
+      }
+      return;
+    }
+
+    openCreate(date, time);
+  }
+
+  function renderEventContent(arg: EventDisplayInfo) {
+    const raw = arg.event.extendedProps.raw as CalEvent | undefined;
+    const clientName = raw?.client?.name?.trim();
+    return (
+      <div className="moshko-event-content">
+        {arg.timeText ? (
+          <div className="moshko-event-time">{arg.timeText}</div>
+        ) : null}
+        <div className="moshko-event-title">{arg.event.title}</div>
+        {clientName ? (
+          <div className="moshko-event-client">{clientName}</div>
+        ) : null}
+      </div>
+    );
   }
 
   function changeView(viewName: CalView) {
@@ -228,18 +285,21 @@ export function CalendarPage() {
           firstDay={0}
           nowIndicator
           editable={false}
-          selectable
-          selectMirror
+          selectable={!isMobile}
+          selectMirror={!isMobile}
           dayMaxEvents={4}
           weekends
-          slotMinTime="06:00:00"
-          slotMaxTime="22:00:00"
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
+          scrollTime="07:00:00"
+          scrollTimeReset={false}
           allDaySlot={false}
           events={fcEvents}
           datesSet={onDatesSet}
           select={onSelect}
           eventClick={onEventClick}
           dateClick={onDateClick}
+          eventContent={renderEventContent}
           eventTimeFormat={{
             hour: "2-digit",
             minute: "2-digit",
