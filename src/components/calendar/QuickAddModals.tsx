@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../convex/_generated/api";
@@ -396,10 +396,13 @@ export function QuickAddCityDialog({
   open,
   onOpenChange,
   onCreated,
+  jobDate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (id: Id<"cities">) => void;
+  /** Job date — rates must apply on/before this day. */
+  jobDate?: string;
 }) {
   const { t } = useTranslation();
   const create = useMutation(api.cities.create);
@@ -407,17 +410,30 @@ export function QuickAddCityDialog({
   const [name, setName] = useState("");
   const [carRate, setCarRate] = useState("0");
   const [commuteRate, setCommuteRate] = useState("0");
-  const [effectiveFrom, setEffectiveFrom] = useState(() =>
-    new Date().toISOString().slice(0, 10),
+  const [effectiveFrom, setEffectiveFrom] = useState(
+    () => jobDate ?? new Date().toISOString().slice(0, 10),
   );
+
+  useEffect(() => {
+    if (!open) return;
+    const today = new Date().toISOString().slice(0, 10);
+    // Rates must cover the job date — use the earlier of job/today.
+    const base = jobDate && jobDate < today ? jobDate : today;
+    setEffectiveFrom(base);
+  }, [open, jobDate]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
+      const today = new Date().toISOString().slice(0, 10);
+      const from =
+        jobDate && jobDate < effectiveFrom
+          ? jobDate
+          : effectiveFrom || today;
       const id = await create({
         name: name.trim(),
-        effectiveFrom,
+        effectiveFrom: from,
         carRate: Number(carRate) || 0,
         commuteRate: Number(commuteRate) || 0,
       });

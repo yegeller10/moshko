@@ -69,7 +69,9 @@ async function buildQuote(
     if (!city) throw new ConvexError("City not found");
     const cityRates = await resolveCityRates(ctx, args.cityId, args.date);
     if (!cityRates) {
-      throw new ConvexError("No city rates for date — add a rate version");
+      throw new ConvexError(
+        "No city rates for this job date — edit the city in Settings or re-add rates with an earlier effective date",
+      );
     }
     commuteRateOneWay = cityRates.commuteRate;
     carRate = cityRates.carRate;

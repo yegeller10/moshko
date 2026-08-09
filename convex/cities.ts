@@ -14,7 +14,14 @@ export async function resolveCityRates(
     .query("cityRateVersions")
     .withIndex("by_city", (q) => q.eq("cityId", cityId))
     .collect();
-  return resolveByEffectiveFrom(versions, date);
+  const forDate = resolveByEffectiveFrom(versions, date);
+  if (forDate) return forDate;
+  // Fallback: earliest version (covers quick-add cities whose effectiveFrom
+  // was after the job date).
+  if (versions.length === 0) return null;
+  return [...versions].sort((a, b) =>
+    a.effectiveFrom.localeCompare(b.effectiveFrom),
+  )[0];
 }
 
 export const list = query({

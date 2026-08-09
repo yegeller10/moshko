@@ -564,6 +564,7 @@ export function JobEventDialog({
       <QuickAddCityDialog
         open={quickCity}
         onOpenChange={setQuickCity}
+        jobDate={form.date}
         onCreated={(id) =>
           setForm((f) => ({ ...f, cityId: id, includeCar: true }))
         }
