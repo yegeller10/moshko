@@ -239,7 +239,8 @@ async function materializeDraftCharges(
   for (const c of charges) {
     const amount = Math.max(0, c.amount);
     if (amount <= 0) continue;
-    const title = c.title.trim();
+    const title =
+      c.title.trim() || (c.kind === "parking" ? "parking" : "other");
     await ctx.db.insert("expenses", {
       calendarEventId: job._id,
       type: c.kind,
@@ -416,9 +417,12 @@ export const create = mutation({
 
     const now = Date.now();
     const status = args.status ?? "booked";
-    const draftCharges = (args.draftCharges ?? []).filter(
-      (c) => c.title.trim() && c.amount > 0,
-    );
+    const draftCharges = (args.draftCharges ?? [])
+      .map((c) => ({
+        ...c,
+        title: c.title.trim() || (c.kind === "parking" ? "parking" : "other"),
+      }))
+      .filter((c) => c.amount > 0);
     const id = await ctx.db.insert("calendarEvents", {
       title,
       notes: args.notes?.trim() || undefined,
@@ -487,7 +491,13 @@ export const update = mutation({
 
     const draftCharges =
       args.draftCharges !== undefined
-        ? args.draftCharges.filter((c) => c.title.trim() && c.amount > 0)
+        ? args.draftCharges
+            .map((c) => ({
+              ...c,
+              title:
+                c.title.trim() || (c.kind === "parking" ? "parking" : "other"),
+            }))
+            .filter((c) => c.amount > 0)
         : existing.draftCharges;
 
     const next = {

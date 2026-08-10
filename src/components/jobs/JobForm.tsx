@@ -81,14 +81,23 @@ function emptyAssignment(
   };
 }
 
-function emptyCharge(): DraftChargeRow {
+function emptyCharge(kind: "parking" | "other" = "parking"): DraftChargeRow {
   return {
     key: newKey(),
-    title: "",
+    title: kind === "parking" ? "parking" : "other",
     amount: "",
     note: "",
-    kind: "other",
+    kind,
   };
+}
+
+function defaultChargeTitle(kind: "parking" | "other") {
+  return kind === "parking" ? "parking" : "other";
+}
+
+function resolveChargeTitle(title: string, kind: "parking" | "other") {
+  const trimmed = title.trim();
+  return trimmed || defaultChargeTitle(kind);
 }
 
 function emptyForm(date?: string): FormState {
@@ -253,7 +262,7 @@ export function JobForm({
   const draftChargesTotal = useMemo(() => {
     return form.draftCharges.reduce((sum, c) => {
       const amount = Number(c.amount) || 0;
-      return sum + (c.title.trim() && amount > 0 ? amount : 0);
+      return sum + (amount > 0 ? amount : 0);
     }, 0);
   }, [form.draftCharges]);
 
@@ -269,9 +278,17 @@ export function JobForm({
   function updateCharge(key: string, patch: Partial<DraftChargeRow>) {
     setForm((f) => ({
       ...f,
-      draftCharges: f.draftCharges.map((c) =>
-        c.key === key ? { ...c, ...patch } : c,
-      ),
+      draftCharges: f.draftCharges.map((c) => {
+        if (c.key !== key) return c;
+        const next = { ...c, ...patch };
+        if (patch.kind && patch.kind !== c.kind) {
+          const prevDefault = defaultChargeTitle(c.kind);
+          if (!c.title.trim() || c.title.trim() === prevDefault) {
+            next.title = defaultChargeTitle(patch.kind);
+          }
+        }
+        return next;
+      }),
     }));
   }
 
@@ -299,12 +316,12 @@ export function JobForm({
       }));
       const draftCharges = form.draftCharges
         .map((c) => ({
-          title: c.title.trim(),
+          title: resolveChargeTitle(c.title, c.kind),
           amount: Number(c.amount) || 0,
           note: c.note.trim() || undefined,
           kind: c.kind,
         }))
-        .filter((c) => c.title && c.amount > 0);
+        .filter((c) => c.amount > 0);
       const title = `${client.name} · ${form.date}`;
       const payload = {
         title,
@@ -691,7 +708,7 @@ export function JobForm({
                 onClick={() =>
                   setForm((f) => ({
                     ...f,
-                    draftCharges: [...f.draftCharges, emptyCharge()],
+                    draftCharges: [...f.draftCharges, emptyCharge("parking")],
                   }))
                 }
               >

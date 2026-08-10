@@ -154,7 +154,12 @@ export function AddEntryPage() {
           setError("missing");
           return;
         }
-        const expenseNote = [title.trim(), note.trim()]
+        const defaultTitle =
+          kind === "parking" ? "parking" : kind === "other" ? "other" : "";
+        const expenseNote = [
+          title.trim() || defaultTitle,
+          note.trim(),
+        ]
           .filter(Boolean)
           .join(" — ");
         await createExpense({
