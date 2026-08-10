@@ -349,7 +349,7 @@ export function JobEventDialog({
             )}
           </DialogHeader>
           <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col">
-            <DialogBody className="grid gap-3 sm:grid-cols-2">
+            <DialogBody className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label>{t("calendar.eventTitle")}</Label>
                 <Input
@@ -360,50 +360,52 @@ export function JobEventDialog({
                   }
                 />
               </div>
-              <div>
-                <Label>{t("calendar.date")}</Label>
-                <Input
-                  type="date"
-                  required
-                  value={form.date}
-                  onChange={(e) =>
-                    setForm({ ...form, date: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <Label>{t("entries.client")}</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setQuickClient(true)}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    {t("calendar.quickAdd")}
-                  </Button>
+
+              <div className="sm:col-span-2 grid gap-3 sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:items-end">
+                <div>
+                  <Label>{t("calendar.date")}</Label>
+                  <Input
+                    type="date"
+                    required
+                    value={form.date}
+                    onChange={(e) =>
+                      setForm({ ...form, date: e.target.value })
+                    }
+                  />
                 </div>
-                <Select
-                  required
-                  value={form.clientId}
-                  onChange={(e) =>
-                    setForm({ ...form, clientId: e.target.value })
-                  }
+                <div className="min-w-0">
+                  <Label>{t("entries.client")}</Label>
+                  <Select
+                    required
+                    value={form.clientId}
+                    onChange={(e) =>
+                      setForm({ ...form, clientId: e.target.value })
+                    }
+                  >
+                    <option value="">—</option>
+                    {(clients ?? []).map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-11 shrink-0"
+                  onClick={() => setQuickClient(true)}
                 >
-                  <option value="">—</option>
-                  {(clients ?? []).map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
+                  <Plus className="h-3.5 w-3.5" />
+                  {t("calendar.quickAdd")}
+                </Button>
               </div>
 
-              <div className="sm:col-span-2 space-y-2 rounded-xl border border-border p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-base">{t("calendar.workers")}</Label>
-                  <div className="flex gap-1">
+              <div className="sm:col-span-2 space-y-3 rounded-xl border border-border p-3 sm:p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label className="mb-0 text-base">{t("calendar.workers")}</Label>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
                       size="sm"
@@ -431,36 +433,21 @@ export function JobEventDialog({
                     </Button>
                   </div>
                 </div>
-                {form.assignments.map((row) => (
+
+                {form.assignments.map((row, index) => (
                   <div
                     key={row.key}
-                    className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3"
+                    className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"
                   >
-                    <div className="flex items-end gap-2">
-                      <div className="min-w-0 flex-1">
-                        <Label className="text-xs">{t("entries.worker")}</Label>
-                        <Select
-                          required
-                          value={row.workerId}
-                          onChange={(e) =>
-                            updateAssignment(row.key, {
-                              workerId: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="">—</option>
-                          {(workers ?? []).map((w) => (
-                            <option key={w._id} value={w._id}>
-                              {w.displayName}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-muted">
+                        {t("entries.worker")} {index + 1}
+                      </p>
                       <Button
                         type="button"
-                        size="icon"
+                        size="sm"
                         variant="ghost"
-                        className="shrink-0"
+                        className="h-8 px-2 text-muted hover:text-red-700"
                         disabled={form.assignments.length <= 1}
                         onClick={() =>
                           setForm((f) => ({
@@ -474,9 +461,30 @@ export function JobEventDialog({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+
+                    <div>
+                      <Label>{t("entries.worker")}</Label>
+                      <Select
+                        required
+                        value={row.workerId}
+                        onChange={(e) =>
+                          updateAssignment(row.key, {
+                            workerId: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">—</option>
+                        {(workers ?? []).map((w) => (
+                          <option key={w._id} value={w._id}>
+                            {w.displayName}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
-                        <Label className="text-xs">{t("calendar.start")}</Label>
+                        <Label>{t("calendar.start")}</Label>
                         <Input
                           type="time"
                           value={row.startTime}
@@ -488,7 +496,7 @@ export function JobEventDialog({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">{t("calendar.end")}</Label>
+                        <Label>{t("calendar.end")}</Label>
                         <Input
                           type="time"
                           value={row.endTime}
@@ -500,9 +508,7 @@ export function JobEventDialog({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">
-                          {t("entries.shiftType")}
-                        </Label>
+                        <Label>{t("entries.shiftType")}</Label>
                         <Select
                           value={row.shiftType}
                           onChange={(e) =>
@@ -520,9 +526,7 @@ export function JobEventDialog({
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs">
-                          {t("entries.travelHours")}
-                        </Label>
+                        <Label>{t("entries.travelHours")}</Label>
                         <Input
                           type="number"
                           min="0"
@@ -538,6 +542,7 @@ export function JobEventDialog({
                     </div>
                   </div>
                 ))}
+
                 <p className="text-xs text-muted">
                   {t("calendar.spanHint")}: {span.startTime}–{span.endTime}
                 </p>
@@ -562,33 +567,34 @@ export function JobEventDialog({
               </label>
 
               {form.includeCar && (
-                <div className="sm:col-span-2">
-                  <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="sm:col-span-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div className="min-w-0">
                     <Label>{t("calendar.city")}</Label>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setQuickCity(true)}
+                    <Select
+                      required
+                      value={form.cityId}
+                      onChange={(e) =>
+                        setForm({ ...form, cityId: e.target.value })
+                      }
                     >
-                      <Plus className="h-3.5 w-3.5" />
-                      {t("calendar.quickAdd")}
-                    </Button>
+                      <option value="">—</option>
+                      {(cities ?? []).map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
-                  <Select
-                    required
-                    value={form.cityId}
-                    onChange={(e) =>
-                      setForm({ ...form, cityId: e.target.value })
-                    }
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-11 shrink-0"
+                    onClick={() => setQuickCity(true)}
                   >
-                    <option value="">—</option>
-                    {(cities ?? []).map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </Select>
+                    <Plus className="h-3.5 w-3.5" />
+                    {t("calendar.quickAdd")}
+                  </Button>
                 </div>
               )}
 
