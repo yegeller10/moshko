@@ -205,7 +205,12 @@ export function AddEntryPage() {
     }
   }
 
-  const kinds: EntryKind[] = ["hours", "car", "parking", "other"];
+  const kinds: { id: EntryKind; label: string }[] = [
+    { id: "hours", label: t("actuals.types.hours") },
+    { id: "car", label: t("expenses.car") },
+    { id: "parking", label: t("expenses.parking") },
+    { id: "other", label: t("expenses.other") },
+  ];
 
   return (
     <div className="w-full max-w-2xl space-y-4 pb-8">
@@ -271,15 +276,15 @@ export function AddEntryPage() {
           )}
           <p className="text-sm font-medium">{t("actuals.pickType")}</p>
           <div className="grid grid-cols-2 gap-2">
-            {kinds.map((k) => (
+            {kinds.map(({ id, label }) => (
               <Button
-                key={k}
+                key={id}
                 type="button"
                 variant="secondary"
                 className="h-14"
-                onClick={() => pickKind(k)}
+                onClick={() => pickKind(id)}
               >
-                {t(`actuals.types.${k}`)}
+                {label}
               </Button>
             ))}
           </div>
@@ -297,7 +302,7 @@ export function AddEntryPage() {
         <form onSubmit={onSubmit} className="space-y-3">
           <Card className="space-y-3">
             <p className="text-sm font-medium">
-              {t(`actuals.types.${kind}`)}
+              {kinds.find((k) => k.id === kind)?.label ?? kind}
               {selectedJob
                 ? ` · ${selectedJob.client?.name ?? ""} · ${selectedJob.date}`
                 : ""}

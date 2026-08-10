@@ -361,17 +361,33 @@ export const listInRange = query({
 });
 
 export const listOpen = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    fromDate: v.optional(v.string()),
+    toDate: v.optional(v.string()),
+    clientId: v.optional(v.id("clients")),
+    statuses: v.optional(v.array(statusType)),
+  },
+  handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const all = await ctx.db.query("calendarEvents").collect();
-    const events = all
-      .filter((e) => e.status === "booked" || e.status === "approved")
-      .sort(
-        (a, b) =>
-          a.date.localeCompare(b.date) ||
-          a.startTime.localeCompare(b.startTime),
-      );
+    const statuses = new Set(
+      args.statuses ?? (["booked", "approved", "done"] as const),
+    );
+    let events = await ctx.db.query("calendarEvents").collect();
+    events = events.filter((e) => statuses.has(e.status));
+    if (args.clientId) {
+      events = events.filter((e) => e.clientId === args.clientId);
+    }
+    if (args.fromDate) {
+      events = events.filter((e) => e.date >= args.fromDate!);
+    }
+    if (args.toDate) {
+      events = events.filter((e) => e.date <= args.toDate!);
+    }
+    events.sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) ||
+        a.startTime.localeCompare(b.startTime),
+    );
     return await Promise.all(events.map((e) => enrichJob(ctx, e)));
   },
 });

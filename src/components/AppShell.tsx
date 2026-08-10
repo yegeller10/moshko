@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   CalendarDays,
-  Clock3,
-  Car,
   Users,
   Building2,
   FileBarChart2,
@@ -34,8 +32,6 @@ const primaryMobile: NavItem[] = [
 ];
 
 const moreMobile: NavItem[] = [
-  { to: "/entries", icon: Clock3, key: "entries", end: true },
-  { to: "/expenses", icon: Car, key: "expenses" },
   { to: "/workers", icon: Users, key: "workers" },
   { to: "/clients", icon: Building2, key: "clients" },
   { to: "/cities", icon: MapPin, key: "cities" },
@@ -91,18 +87,11 @@ export function AppShell() {
   const moreRef = useRef<HTMLDivElement>(null);
   const isCalendar = location.pathname.startsWith("/calendar");
 
-  const moreActive = moreMobile.some((l) => {
-    if (l.to === "/entries") {
-      return (
-        location.pathname === "/entries" ||
-        location.pathname === "/entries/new"
-      );
-    }
-    return (
+  const moreActive = moreMobile.some(
+    (l) =>
       location.pathname === l.to ||
-      location.pathname.startsWith(`${l.to}/`)
-    );
-  });
+      location.pathname.startsWith(`${l.to}/`),
+  );
 
   useEffect(() => {
     setMoreOpen(false);

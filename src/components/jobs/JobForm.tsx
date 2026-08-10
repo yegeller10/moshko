@@ -427,6 +427,44 @@ export function JobForm({
                   {t("calendar.markDone")}
                 </Button>
               )}
+              {status === "done" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!jobId) return;
+                    setSaving(true);
+                    try {
+                      await setStatus({ id: jobId, status: "approved" });
+                      onSaved?.(jobId);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  {t("calendar.reopen")}
+                </Button>
+              )}
+              {status === "cancelled" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!jobId) return;
+                    setSaving(true);
+                    try {
+                      await setStatus({ id: jobId, status: "booked" });
+                      onSaved?.(jobId);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  {t("calendar.undelete")}
+                </Button>
+              )}
               {status !== "cancelled" && (
                 <Button
                   type="button"
@@ -814,12 +852,14 @@ export function JobForm({
                 {t("calendar.car")}:{" "}
                 {formatMoney(previewQuote.carCost, locale)}
               </p>
-              {draftChargesTotal > 0 && (
-                <p>
-                  {t("jobs.otherCharges")}:{" "}
-                  {formatMoney(draftChargesTotal, locale)}
-                </p>
-              )}
+              {form.draftCharges
+                .filter((c) => (Number(c.amount) || 0) > 0)
+                .map((c) => (
+                  <p key={c.key}>
+                    {resolveChargeTitle(c.title, c.kind)}:{" "}
+                    {formatMoney(Number(c.amount) || 0, locale)}
+                  </p>
+                ))}
               <p className="font-semibold text-brand">
                 {t("calendar.grandTotal")}:{" "}
                 {formatMoney(

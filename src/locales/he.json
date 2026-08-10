@@ -4,7 +4,7 @@
   "nav": {
     "dashboard": "בית",
     "calendar": "יומן",
-    "quotes": "הצעות",
+    "quotes": "עבודות",
     "addEntry": "רשומה",
     "entries": "שעות",
     "expenses": "רכב",
@@ -183,6 +183,8 @@
     "approve": "אישור",
     "markDone": "סימון כבוצע",
     "markDoneConfirm": "לסמן עבודה זו כבוצעה?",
+    "reopen": "פתיחה מחדש",
+    "undelete": "שחזור",
     "addEvent": "הוספת אירוע",
     "editEvent": "עריכת אירוע",
     "holiday": "חג",
@@ -192,11 +194,17 @@
     "sundayLegend": "יום ראשון"
   },
   "quotes": {
-    "title": "הצעות ומאושרים",
-    "empty": "אין הצעות או עבודות מאושרות פתוחות",
+    "title": "עבודות",
+    "empty": "אין עבודות בטווח זה",
     "newQuote": "הצעה חדשה",
     "newJob": "עבודה חדשה",
-    "workers": "עובדים"
+    "workers": "עובדים",
+    "fromDate": "מתאריך",
+    "toDate": "עד תאריך",
+    "filterClient": "לקוח",
+    "allClients": "כל הלקוחות",
+    "filterStatus": "סטטוס",
+    "noStatusSelected": "בחרו לפחות סטטוס אחד"
   },
   "jobs": {
     "newQuote": "הצעה חדשה",

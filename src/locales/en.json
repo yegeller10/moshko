@@ -4,7 +4,7 @@
   "nav": {
     "dashboard": "Home",
     "calendar": "Calendar",
-    "quotes": "Quotes",
+    "quotes": "Jobs",
     "addEntry": "Add entry",
     "entries": "Hours",
     "expenses": "Car",
@@ -183,6 +183,8 @@
     "approve": "Approve",
     "markDone": "Mark done",
     "markDoneConfirm": "Mark this job as done?",
+    "reopen": "Reopen",
+    "undelete": "Undelete",
     "addEvent": "Add event",
     "editEvent": "Edit event",
     "holiday": "Holiday",
@@ -192,11 +194,17 @@
     "sundayLegend": "Sunday"
   },
   "quotes": {
-    "title": "Quotes & confirmed",
-    "empty": "No open quotes or confirmed jobs",
+    "title": "Jobs",
+    "empty": "No jobs in this range",
     "newQuote": "New quote",
     "newJob": "New job",
-    "workers": "Workers"
+    "workers": "Workers",
+    "fromDate": "From",
+    "toDate": "To",
+    "filterClient": "Client",
+    "allClients": "All clients",
+    "filterStatus": "Status",
+    "noStatusSelected": "Select at least one status"
   },
   "jobs": {
     "newQuote": "New quote",
