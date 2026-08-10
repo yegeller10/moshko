@@ -4,6 +4,8 @@
   "nav": {
     "dashboard": "בית",
     "calendar": "יומן",
+    "quotes": "הצעות",
+    "addEntry": "רשומה",
     "entries": "שעות",
     "expenses": "רכב",
     "workers": "עובדים",
@@ -186,7 +188,41 @@
     "holiday": "חג",
     "personalEvent": "אירוע אישי",
     "allDay": "יום שלם",
-    "jobLegend": "עבודה"
+    "jobLegend": "עבודה",
+    "sundayLegend": "יום ראשון"
+  },
+  "quotes": {
+    "title": "הצעות ומאושרים",
+    "empty": "אין הצעות או עבודות מאושרות פתוחות",
+    "newQuote": "הצעה חדשה",
+    "newJob": "עבודה חדשה",
+    "workers": "עובדים"
+  },
+  "jobs": {
+    "newQuote": "הצעה חדשה",
+    "newJob": "עבודה חדשה",
+    "edit": "עריכת עבודה",
+    "otherCharges": "חיובים נוספים",
+    "otherChargesHint": "חניה או חיוב אחר (אופציונלי). נשמרים בעבודה ונכנסים לחיוב באישור.",
+    "addCharge": "הוספת חיוב",
+    "chargeTitle": "כותרת",
+    "chargeAmount": "סכום (₪)",
+    "chargeKind": "סוג",
+    "emailComingSoon": "אישור במייל — בהמשך",
+    "sendQuoteEmail": "שליחת הצעה במייל",
+    "sendOrderConfirmation": "שליחת אישור הזמנה"
+  },
+  "actuals": {
+    "title": "הוספת רשומה",
+    "hint": "בחרו תאריך, בחרו עבודה, ואז הוסיפו שעות או רכב/חניה/אחר.",
+    "next": "המשך",
+    "pickJob": "עבודות בתאריך",
+    "noJobs": "אין עבודות בתאריך זה",
+    "pickType": "מה להוסיף",
+    "save": "שמירת רשומה",
+    "saved": "נשמר",
+    "openJob": "פתיחת עבודה",
+    "addAnother": "הוספה נוספת"
   },
   "cities": {
     "title": "ערים ותעריפי רכב",
@@ -245,6 +281,7 @@
     "h150": "150%",
     "h200": "200%",
     "travel": "נסיעה",
+    "travelCost": "נסיעה ₪",
     "totalH": "סה״כ שעות",
     "rate": "תעריף",
     "payment": "תשלום"
@@ -302,6 +339,8 @@
     "error": "שגיאה",
     "back": "חזרה",
     "yes": "כן",
-    "no": "לא"
+    "no": "לא",
+    "search": "חיפוש…",
+    "noResults": "אין תוצאות"
   }
 }

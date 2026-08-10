@@ -46,11 +46,19 @@ export function CitiesPage() {
   const [csvRows, setCsvRows] = useState<ParsedCityCsvRow[]>([]);
   const [csvStatus, setCsvStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
 
   const selected = useMemo(
     () => cities?.find((c) => c._id === selectedId) ?? null,
     [cities, selectedId],
   );
+
+  const filteredCities = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!cities) return [];
+    if (!q) return cities;
+    return cities.filter((c) => c.name.toLowerCase().includes(q));
+  }, [cities, search]);
 
   const validCsv = csvRows.filter((r) => r.errors.length === 0);
   const errorCsv = csvRows.filter((r) => r.errors.length > 0);
@@ -134,6 +142,13 @@ export function CitiesPage() {
         <p className="text-sm text-muted">{t("cities.hint")}</p>
       </div>
 
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t("common.search")}
+        className="max-w-md"
+      />
+
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <Card className="space-y-3 overflow-x-auto">
           <h3 className="font-semibold">{t("cities.list")}</h3>
@@ -150,7 +165,7 @@ export function CitiesPage() {
               </tr>
             </thead>
             <tbody>
-              {(cities ?? []).map((c) => (
+              {filteredCities.map((c) => (
                 <tr key={c._id} className="border-b border-zinc-100">
                   <td className="py-2 pe-2 font-medium">{c.name}</td>
                   <td className="py-2 pe-2">
@@ -198,9 +213,11 @@ export function CitiesPage() {
               ))}
             </tbody>
           </table>
-          {!cities?.length && (
+          {!cities?.length ? (
             <p className="text-sm text-muted">{t("cities.empty")}</p>
-          )}
+          ) : filteredCities.length === 0 ? (
+            <p className="text-sm text-muted">{t("common.noResults")}</p>
+          ) : null}
         </Card>
 
         <Card className="space-y-3">

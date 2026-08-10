@@ -52,8 +52,9 @@ First Google sign-in becomes the first admin. Later admins must be invited from 
 ## Phase 2 (not built yet)
 
 - Overtime band thresholds (100–200%)
-- Email monthly reports to clients
+- Email monthly reports / quote confirmation / order confirmation to clients
 - Domain mail forward for client replies
+- **Auto-sync Israel holidays** (replace the one-time seed; current holiday seed was incomplete)
 
 ## CSV template
 

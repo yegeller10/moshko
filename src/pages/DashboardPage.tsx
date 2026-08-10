@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
-import { Plus, Upload, FileBarChart2, Car, CalendarDays } from "lucide-react";
+import { Plus, Upload, FileBarChart2, CalendarDays, ClipboardList } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,21 +55,21 @@ export function DashboardPage() {
         </h3>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <Button asChild className="justify-start" size="lg">
-            <Link to="/calendar">
+            <Link to="/jobs/new?mode=quote">
               <CalendarDays className="h-5 w-5" />
-              {t("calendar.add")}
+              {t("quotes.newQuote")}
             </Link>
           </Button>
           <Button asChild variant="secondary" className="justify-start" size="lg">
-            <Link to="/entries/new">
+            <Link to="/quotes">
+              <ClipboardList className="h-5 w-5" />
+              {t("nav.quotes")}
+            </Link>
+          </Button>
+          <Button asChild variant="secondary" className="justify-start" size="lg">
+            <Link to="/entries/add">
               <Plus className="h-5 w-5" />
-              {t("dashboard.newEntry")}
-            </Link>
-          </Button>
-          <Button asChild variant="secondary" className="justify-start" size="lg">
-            <Link to="/expenses">
-              <Car className="h-5 w-5" />
-              {t("dashboard.newExpense")}
+              {t("nav.addEntry")}
             </Link>
           </Button>
           <Button asChild variant="secondary" className="justify-start" size="lg">

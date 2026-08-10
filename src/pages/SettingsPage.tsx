@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@workos-inc/authkit-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -219,14 +218,6 @@ export function SettingsPage() {
             </li>
           ))}
         </ul>
-      </Card>
-
-      <Card className="space-y-3">
-        <h3 className="font-semibold">{t("settings.cities")}</h3>
-        <p className="text-sm text-muted">{t("settings.citiesMovedHint")}</p>
-        <Button asChild variant="secondary">
-          <Link to="/cities">{t("settings.openCities")}</Link>
-        </Button>
       </Card>
 
       <Card className="space-y-3">

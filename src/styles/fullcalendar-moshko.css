@@ -133,9 +133,9 @@
   height: 100%;
 }
 
-/* Jobs: solid light-yellow bar covering full event text */
-.moshko-calendar .fc .fc-event.moshko-event-job,
-.moshko-calendar .fc .fc-event.moshko-event-job .fc-event-main {
+/* Jobs: status-colored bars */
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-booked,
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-booked .fc-event-main {
   --fc-event-color: #fde047;
   --fc-event-contrast-color: #713f12;
   background-color: #fef08a !important;
@@ -143,11 +143,20 @@
   color: #713f12 !important;
 }
 
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-approved,
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-approved .fc-event-main {
+  --fc-event-color: #86efac;
+  --fc-event-contrast-color: #14532d;
+  background-color: #bbf7d0 !important;
+  border-color: #16a34a !important;
+  color: #14532d !important;
+}
+
 .moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-done,
 .moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-done .fc-event-main {
-  background-color: #f5f5f4 !important;
-  border-color: #a8a29e !important;
-  color: #44403c !important;
+  background-color: #e4e4e7 !important;
+  border-color: #a1a1aa !important;
+  color: #3f3f46 !important;
 }
 
 .moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-cancelled,
@@ -157,6 +166,36 @@
   color: #991b1b !important;
   opacity: 0.9;
   text-decoration: line-through;
+}
+
+.moshko-calendar .moshko-event-pill {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap !important;
+  overflow: hidden;
+}
+
+.moshko-calendar .moshko-event-client-short {
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moshko-calendar .moshko-event-workers {
+  font-weight: 600;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.moshko-calendar .fc .fc-daygrid-day.moshko-sunday,
+.moshko-calendar .fc .fc-timegrid-col.moshko-sunday {
+  background: #fff1f2 !important;
+}
+
+.moshko-calendar .fc .fc-col-header-cell.moshko-sunday {
+  background: #ffe4e6 !important;
 }
 
 /* Holidays: solid blue + white text (readable) */

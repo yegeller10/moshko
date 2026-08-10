@@ -6,8 +6,11 @@ import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { CalendarPage } from "@/pages/CalendarPage";
+import { QuotesPage } from "@/pages/QuotesPage";
+import { JobPage } from "@/pages/JobPage";
 import { EntriesPage } from "@/pages/EntriesPage";
 import { NewEntryPage } from "@/pages/NewEntryPage";
+import { AddEntryPage } from "@/pages/AddEntryPage";
 import { ExpensesPage } from "@/pages/ExpensesPage";
 import { WorkersPage } from "@/pages/WorkersPage";
 import { ClientsPage } from "@/pages/ClientsPage";
@@ -34,8 +37,12 @@ export function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="calendar" element={<CalendarPage />} />
+            <Route path="quotes" element={<QuotesPage />} />
+            <Route path="jobs/new" element={<JobPage />} />
+            <Route path="jobs/:id" element={<JobPage />} />
             <Route path="entries" element={<EntriesPage />} />
             <Route path="entries/new" element={<NewEntryPage />} />
+            <Route path="entries/add" element={<AddEntryPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="workers" element={<WorkersPage />} />
             <Route path="workers/:id" element={<WorkerDetailPage />} />

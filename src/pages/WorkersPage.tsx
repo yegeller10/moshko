@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../convex/_generated/api";
@@ -33,6 +33,16 @@ export function WorkersPage() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!workers) return [];
+    if (!q) return workers;
+    return workers.filter((w) =>
+      (w.displayName ?? "").toLowerCase().includes(q),
+    );
+  }, [workers, search]);
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +70,13 @@ export function WorkersPage() {
           {t("workers.add")}
         </Button>
       </div>
+
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t("common.search")}
+        className="max-w-md"
+      />
 
       {open && (
         <Card>
@@ -185,9 +202,11 @@ export function WorkersPage() {
 
       {!workers?.length ? (
         <Card className="text-sm text-muted">{t("workers.empty")}</Card>
+      ) : filtered.length === 0 ? (
+        <Card className="text-sm text-muted">{t("common.noResults")}</Card>
       ) : (
         <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {workers.map((w) => (
+          {filtered.map((w) => (
             <li key={w._id}>
               <Card
                 className="flex items-start justify-between gap-2"
@@ -200,28 +219,26 @@ export function WorkersPage() {
                       {t(`workers.types.${w.type}`)}
                     </p>
                   )}
-                  {w.phone && (
-                    <p className="text-xs text-muted">{w.phone}</p>
-                  )}
-                  {w.idNumber && (
-                    <p className="text-xs text-muted">
-                      {t("workers.idNumber")}: {w.idNumber}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted">
-                    {t("workers.carLicense")}:{" "}
-                    {w.carLicense ? t("common.yes") : t("common.no")}
-                    {" · "}
-                    {t("workers.heightWorkLicense")}:{" "}
-                    {w.heightWorkLicense ? t("common.yes") : t("common.no")}
-                  </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => navigate(`/workers/${w._id}`)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate(`/workers/${w._id}`)}
+                  >
                     {t("workers.open")}
                   </Button>
-                  <Button variant="secondary" size="sm" onClick={() => void update({ id: w._id as Id<"workers">, active: !(w.active !== false) })}>
-                    {w.active !== false ? "Off" : "On"}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      void update({
+                        id: w._id as Id<"workers">,
+                        active: !w.active,
+                      })
+                    }
+                  >
+                    {w.active ? "Off" : "On"}
                   </Button>
                 </div>
               </Card>

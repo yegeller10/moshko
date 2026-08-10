@@ -95,21 +95,21 @@ export function ReportsPage() {
               <table className="min-w-full text-start text-sm">
                 <thead className="bg-blue-50 text-xs text-zinc-600">
                   <tr>
-                    {["name", "enter", "exit", "h100", "h125", "h150", "h200", "travel", "totalH", "rate", "payment"].map((key) => <th key={key} className="whitespace-nowrap px-3 py-2 font-medium">{t(`reports.${key}`)}</th>)}
+                    {["name", "enter", "exit", "h100", "h125", "h150", "h200", "travel", "travelCost", "totalH", "rate", "payment"].map((key) => <th key={key} className="whitespace-nowrap px-3 py-2 font-medium">{t(`reports.${key}`)}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {report.groups.flatMap((group) => [
-                    <tr key={`date-${group.date}`} className="border-t border-zinc-200 bg-zinc-50 font-semibold"><td className="px-3 py-2" colSpan={11}>{group.date} · {formatMoney(group.dayTotal, locale)}</td></tr>,
+                    <tr key={`date-${group.date}`} className="border-t border-zinc-200 bg-zinc-50 font-semibold"><td className="px-3 py-2" colSpan={12}>{group.date} · {formatMoney(group.dayTotal, locale)}</td></tr>,
                     ...group.rows.map((row) => <tr key={row.id} className="border-t border-zinc-100">
-                      <td className="px-3 py-2">{row.kind === "worker" ? <><strong>{row.name}</strong><span className="block text-xs text-muted">{row.location}</span></> : <><span>{row.name}</span><span className="block text-xs text-muted">{row.location}</span></>}</td>
-                      <td className="px-3 py-2">{row.enter ?? ""}</td><td className="px-3 py-2">{row.exit ?? ""}</td><td className="px-3 py-2">{row.h100 ?? ""}</td><td className="px-3 py-2">{row.h125 ?? ""}</td><td className="px-3 py-2">{row.h150 ?? ""}</td><td className="px-3 py-2">{row.h200 ?? ""}</td><td className="px-3 py-2">{row.travelH ?? ""}</td><td className="px-3 py-2">{row.totalH ?? ""}</td><td className="px-3 py-2">{row.rate === null ? "" : formatMoney(row.rate, locale)}</td><td className="px-3 py-2 font-medium">{formatMoney(row.payment, locale)}</td>
+                      <td className="px-3 py-2">{row.kind === "worker" ? <><strong>{row.name}</strong><span className="block text-xs text-muted">{row.location}</span></> : <><span>{row.name}</span>{row.kind === "expense" && row.rate != null ? <span className="block text-xs text-muted">{row.location}</span> : <span className="block text-xs text-muted">{row.location}</span>}</>}</td>
+                      <td className="px-3 py-2">{row.enter ?? ""}</td><td className="px-3 py-2">{row.exit ?? ""}</td><td className="px-3 py-2">{row.h100 ?? ""}</td><td className="px-3 py-2">{row.h125 ?? ""}</td><td className="px-3 py-2">{row.h150 ?? ""}</td><td className="px-3 py-2">{row.h200 ?? ""}</td><td className="px-3 py-2">{row.travelH ?? ""}</td><td className="px-3 py-2">{row.travelCost == null ? "" : formatMoney(row.travelCost, locale)}</td><td className="px-3 py-2">{row.totalH ?? ""}</td><td className="px-3 py-2">{row.rate === null ? "" : formatMoney(row.rate, locale)}</td><td className="px-3 py-2 font-medium">{formatMoney(row.payment, locale)}</td>
                     </tr>),
                   ])}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-border bg-brand-soft font-semibold">
-                    <td className="px-3 py-2" colSpan={10}>
+                    <td className="px-3 py-2" colSpan={11}>
                       {t("reports.monthTotal")}
                     </td>
                     <td className="px-3 py-2">

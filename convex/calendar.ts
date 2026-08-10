@@ -29,12 +29,26 @@ const assignmentValidator = v.object({
   travelHours: v.number(),
 });
 
+const draftChargeValidator = v.object({
+  title: v.string(),
+  amount: v.number(),
+  note: v.optional(v.string()),
+  kind: v.union(v.literal("parking"), v.literal("other")),
+});
+
 type Assignment = {
   workerId: Id<"workers">;
   startTime: string;
   endTime: string;
   shiftType: ShiftType;
   travelHours: number;
+};
+
+type DraftCharge = {
+  title: string;
+  amount: number;
+  note?: string;
+  kind: "parking" | "other";
 };
 
 function assertStatusTransition(
@@ -205,6 +219,58 @@ async function materializeAssignments(
   }
 }
 
+async function materializeDraftCharges(
+  ctx: MutationCtx,
+  job: Doc<"calendarEvents">,
+  charges: DraftCharge[],
+  userId: Id<"users">,
+) {
+  if (!charges.length) return;
+  const existing = await ctx.db
+    .query("expenses")
+    .withIndex("by_event", (q) => q.eq("calendarEventId", job._id))
+    .collect();
+  // Only add draft charges once (skip if any parking/other already from drafts)
+  const hasDrafted = existing.some(
+    (e) => e.type === "parking" || e.type === "other",
+  );
+  if (hasDrafted) return;
+
+  for (const c of charges) {
+    const amount = Math.max(0, c.amount);
+    if (amount <= 0) continue;
+    const title = c.title.trim();
+    await ctx.db.insert("expenses", {
+      calendarEventId: job._id,
+      type: c.kind,
+      clientId: job.clientId,
+      date: job.date,
+      location: job.locationText || undefined,
+      quantity: 1,
+      unitRate: amount,
+      total: amount,
+      note: [title, c.note?.trim()].filter(Boolean).join(" — ") || undefined,
+      createdBy: userId,
+      createdAt: Date.now(),
+    });
+  }
+}
+
+async function materializeJob(
+  ctx: MutationCtx,
+  job: Doc<"calendarEvents">,
+  assignments: Assignment[],
+  userId: Id<"users">,
+) {
+  await materializeAssignments(ctx, job, assignments, userId);
+  await materializeDraftCharges(
+    ctx,
+    job,
+    (job.draftCharges ?? []) as DraftCharge[],
+    userId,
+  );
+}
+
 async function enrichJob(ctx: QueryCtx, e: Doc<"calendarEvents">) {
   const assignments = normalizeAssignments(e);
   const [client, city, workers, timeEntries, expenses] = await Promise.all([
@@ -293,6 +359,22 @@ export const listInRange = query({
   },
 });
 
+export const listOpen = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const all = await ctx.db.query("calendarEvents").collect();
+    const events = all
+      .filter((e) => e.status === "booked" || e.status === "approved")
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          a.startTime.localeCompare(b.startTime),
+      );
+    return await Promise.all(events.map((e) => enrichJob(ctx, e)));
+  },
+});
+
 export const get = query({
   args: { id: v.id("calendarEvents") },
   handler: async (ctx, args) => {
@@ -314,6 +396,7 @@ export const create = mutation({
     workerAssignments: v.array(assignmentValidator),
     includeCar: v.boolean(),
     locationText: v.optional(v.string()),
+    draftCharges: v.optional(v.array(draftChargeValidator)),
     status: v.optional(statusType),
   },
   handler: async (ctx, args) => {
@@ -333,6 +416,9 @@ export const create = mutation({
 
     const now = Date.now();
     const status = args.status ?? "booked";
+    const draftCharges = (args.draftCharges ?? []).filter(
+      (c) => c.title.trim() && c.amount > 0,
+    );
     const id = await ctx.db.insert("calendarEvents", {
       title,
       notes: args.notes?.trim() || undefined,
@@ -349,6 +435,7 @@ export const create = mutation({
       includeCar: args.includeCar,
       status,
       locationText: args.locationText?.trim() || undefined,
+      draftCharges: draftCharges.length ? draftCharges : undefined,
       rateSnapshot,
       quote,
       createdBy: user._id,
@@ -359,12 +446,7 @@ export const create = mutation({
     if (status === "approved" || status === "done") {
       const job = await ctx.db.get(id);
       if (job) {
-        await materializeAssignments(
-          ctx,
-          job,
-          args.workerAssignments,
-          user._id,
-        );
+        await materializeJob(ctx, job, args.workerAssignments, user._id);
       }
     }
 
@@ -385,6 +467,7 @@ export const update = mutation({
     workerAssignments: v.optional(v.array(assignmentValidator)),
     includeCar: v.optional(v.boolean()),
     locationText: v.optional(v.string()),
+    draftCharges: v.optional(v.array(draftChargeValidator)),
     status: v.optional(statusType),
     actualWorkHours: v.optional(v.number()),
   },
@@ -401,6 +484,11 @@ export const update = mutation({
       args.workerAssignments ?? normalizeAssignments(existing);
     validateAssignments(assignments);
     const span = assignmentSpan(assignments);
+
+    const draftCharges =
+      args.draftCharges !== undefined
+        ? args.draftCharges.filter((c) => c.title.trim() && c.amount > 0)
+        : existing.draftCharges;
 
     const next = {
       title: args.title !== undefined ? args.title.trim() : existing.title,
@@ -423,6 +511,8 @@ export const update = mutation({
         args.locationText !== undefined
           ? args.locationText.trim() || undefined
           : existing.locationText,
+      draftCharges:
+        draftCharges && draftCharges.length > 0 ? draftCharges : undefined,
       status: args.status ?? existing.status,
       actualWorkHours:
         args.actualWorkHours !== undefined
@@ -450,7 +540,7 @@ export const update = mutation({
     if (next.status === "approved" || next.status === "done") {
       const job = await ctx.db.get(args.id);
       if (job) {
-        await materializeAssignments(ctx, job, assignments, user._id);
+        await materializeJob(ctx, job, assignments, user._id);
       }
     }
   },
@@ -484,7 +574,7 @@ export const setStatus = mutation({
     if (args.status === "approved" || args.status === "done") {
       const job = await ctx.db.get(args.id);
       if (job) {
-        await materializeAssignments(
+        await materializeJob(
           ctx,
           job,
           normalizeAssignments(job),

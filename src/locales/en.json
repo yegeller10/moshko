@@ -4,6 +4,8 @@
   "nav": {
     "dashboard": "Home",
     "calendar": "Calendar",
+    "quotes": "Quotes",
+    "addEntry": "Add entry",
     "entries": "Hours",
     "expenses": "Car",
     "workers": "Workers",
@@ -186,7 +188,41 @@
     "holiday": "Holiday",
     "personalEvent": "Personal event",
     "allDay": "All day",
-    "jobLegend": "Job"
+    "jobLegend": "Job",
+    "sundayLegend": "Sunday"
+  },
+  "quotes": {
+    "title": "Quotes & confirmed",
+    "empty": "No open quotes or confirmed jobs",
+    "newQuote": "New quote",
+    "newJob": "New job",
+    "workers": "Workers"
+  },
+  "jobs": {
+    "newQuote": "New quote",
+    "newJob": "New job",
+    "edit": "Edit job",
+    "otherCharges": "Other charges",
+    "otherChargesHint": "Optional parking or other fees. Saved to the job and billed when approved.",
+    "addCharge": "Add charge",
+    "chargeTitle": "Title",
+    "chargeAmount": "Amount (₪)",
+    "chargeKind": "Type",
+    "emailComingSoon": "Email confirmation — coming later",
+    "sendQuoteEmail": "Send quote email",
+    "sendOrderConfirmation": "Send order confirmation"
+  },
+  "actuals": {
+    "title": "Add entry",
+    "hint": "Pick a date, choose a job, then add hours or car/parking/other.",
+    "next": "Next",
+    "pickJob": "Jobs on",
+    "noJobs": "No jobs on this date",
+    "pickType": "What to add",
+    "save": "Save entry",
+    "saved": "Saved",
+    "openJob": "Open job",
+    "addAnother": "Add another"
   },
   "cities": {
     "title": "Cities & car rates",
@@ -245,6 +281,7 @@
     "h150": "150%",
     "h200": "200%",
     "travel": "Travel",
+    "travelCost": "Travel ₪",
     "totalH": "Total H",
     "rate": "Rate",
     "payment": "Payment"
@@ -302,6 +339,8 @@
     "error": "Error",
     "back": "Back",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "search": "Search…",
+    "noResults": "No results"
   }
 }

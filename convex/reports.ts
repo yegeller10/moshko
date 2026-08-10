@@ -57,6 +57,7 @@ export const monthlyClientReport = query({
       h150: number | null;
       h200: number | null;
       travelH: number | null;
+      travelCost: number | null;
       totalH: number | null;
       rate: number | null;
       payment: number;
@@ -108,6 +109,7 @@ export const monthlyClientReport = query({
           h150: bands.h150,
           h200: bands.h200,
           travelH: bands.travelHours,
+          travelCost: Math.round(bands.travelHours * rate * 100) / 100,
           totalH: bands.totalH,
           rate,
           payment: bands.payment,
@@ -135,8 +137,9 @@ export const monthlyClientReport = query({
           h150: null,
           h200: null,
           travelH: null,
+          travelCost: null,
           totalH: null,
-          rate: null,
+          rate: exp.unitRate,
           payment: exp.total,
           jobId: job._id,
           jobTitle: job.title,

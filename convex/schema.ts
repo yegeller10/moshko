@@ -171,6 +171,16 @@ export default defineSchema({
     includeCar: v.boolean(),
     status: jobStatusValidator,
     locationText: v.optional(v.string()),
+    draftCharges: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          amount: v.number(),
+          note: v.optional(v.string()),
+          kind: v.union(v.literal("parking"), v.literal("other")),
+        }),
+      ),
+    ),
     googleCalendarId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     syncedAt: v.optional(v.number()),

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../convex/_generated/api";
@@ -31,6 +31,14 @@ export function ClientsPage() {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!clients) return [];
+    if (!q) return clients;
+    return clients.filter((c) => (c.name ?? "").toLowerCase().includes(q));
+  }, [clients, search]);
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +64,13 @@ export function ClientsPage() {
           {t("clients.add")}
         </Button>
       </div>
+
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t("common.search")}
+        className="max-w-md"
+      />
 
       {open && (
         <Card>
@@ -180,9 +195,11 @@ export function ClientsPage() {
 
       {!clients?.length ? (
         <Card className="text-sm text-muted">{t("clients.empty")}</Card>
+      ) : filtered.length === 0 ? (
+        <Card className="text-sm text-muted">{t("common.noResults")}</Card>
       ) : (
         <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {clients.map((c) => (
+          {filtered.map((c) => (
             <li key={c._id}>
               <Card
                 className="flex items-start justify-between gap-2"

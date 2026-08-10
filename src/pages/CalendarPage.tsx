@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import FullCalendar from "@fullcalendar/react";
@@ -18,7 +19,6 @@ import type {
 import { Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { JobEventDialog } from "@/components/calendar/JobEventDialog";
 import {
   CalendarLabelDialog,
   type LabelDoc,
@@ -37,17 +37,10 @@ type JobStatus = "booked" | "approved" | "done" | "cancelled";
 type CalEvent = {
   _id: Id<"calendarEvents">;
   title: string;
-  notes?: string;
   date: string;
   startTime: string;
   endTime: string;
-  clientId: Id<"clients">;
-  cityId?: Id<"cities">;
-  plannedWorkHours: number;
-  shiftType: "normal" | "saturday";
   workerIds: Id<"workers">[];
-  includeCar: boolean;
-  locationText?: string;
   status: JobStatus;
   client?: { name?: string } | null;
 };
@@ -60,6 +53,12 @@ function pad2(n: number) {
 
 function toISODate(d: Date) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function truncate(s: string, n: number) {
+  const t = s.trim();
+  if (t.length <= n) return t;
+  return `${t.slice(0, n)}…`;
 }
 
 function useIsMobileCalendar() {
@@ -88,8 +87,16 @@ function statusDotClass(status: JobStatus) {
   return `moshko-status-dot moshko-status-dot--${status}`;
 }
 
+function jobColors(status: JobStatus): { color: string; contrast: string } {
+  if (status === "approved") return { color: "#86efac", contrast: "#14532d" };
+  if (status === "done") return { color: "#d4d4d8", contrast: "#3f3f46" };
+  if (status === "cancelled") return { color: "#fecaca", contrast: "#991b1b" };
+  return { color: "#fde047", contrast: "#713f12" };
+}
+
 export function CalendarPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const isMobile = useIsMobileCalendar();
   const calendarRef = useRef<CalendarRef>(null);
   const lastTapRef = useRef<{ key: string; at: number } | null>(null);
@@ -101,10 +108,6 @@ export function CalendarPage() {
   });
   const [title, setTitle] = useState("");
   const [activeView, setActiveView] = useState<CalView>("dayGridMonth");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<CalEvent | null>(null);
-  const [createDate, setCreateDate] = useState<string | undefined>();
-  const [createStart, setCreateStart] = useState<string | undefined>();
   const [labelOpen, setLabelOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<LabelDoc | null>(null);
   const [labelDate, setLabelDate] = useState<string | undefined>();
@@ -119,19 +122,20 @@ export function CalendarPage() {
   });
 
   const fcEvents = useMemo(() => {
-    const jobs = ((events ?? []) as CalEvent[]).map((e) => ({
-      id: e._id,
-      title: e.title,
-      start: `${e.date}T${e.startTime}:00`,
-      end: `${e.date}T${e.endTime}:00`,
-      // FullCalendar v7 uses `className` (not legacy `classNames`)
-      className: jobClassName(e.status),
-      // Block display = solid month bar (like holidays), not a tiny colored dot
-      display: "block" as const,
-      color: "#fde047",
-      contrastColor: "#713f12",
-      extendedProps: { kind: "job" as const, raw: e },
-    }));
+    const jobs = ((events ?? []) as CalEvent[]).map((e) => {
+      const colors = jobColors(e.status);
+      return {
+        id: e._id,
+        title: e.title,
+        start: `${e.date}T${e.startTime}:00`,
+        end: `${e.date}T${e.endTime}:00`,
+        className: jobClassName(e.status),
+        display: "block" as const,
+        color: colors.color,
+        contrastColor: colors.contrast,
+        extendedProps: { kind: "job" as const, raw: e },
+      };
+    });
 
     const marks = (labels ?? []).map((l) => {
       const isHoliday = l.kind === "holiday";
@@ -141,7 +145,6 @@ export function CalendarPage() {
         className: isHoliday
           ? "moshko-label-holiday"
           : "moshko-label-personal",
-        // White text on solid brand color so labels stay readable
         color: isHoliday ? "#0b6fc2" : "#7c3aed",
         contrastColor: "#ffffff",
         display: "block" as const,
@@ -161,18 +164,8 @@ export function CalendarPage() {
     return [...marks, ...jobs];
   }, [events, labels]);
 
-  function openCreate(date: string, time?: string) {
-    setEditing(null);
-    setCreateDate(date);
-    setCreateStart(time);
-    setDialogOpen(true);
-  }
-
-  function openEdit(e: CalEvent) {
-    setEditing(e);
-    setCreateDate(e.date);
-    setCreateStart(undefined);
-    setDialogOpen(true);
+  function openCreate(date: string) {
+    navigate(`/jobs/new?mode=quote&date=${encodeURIComponent(date)}`);
   }
 
   function onDatesSet(arg: DatesSetInfo) {
@@ -189,12 +182,7 @@ export function CalendarPage() {
       calendarRef.current?.getApi().unselect();
       return;
     }
-    const date = toISODate(arg.start);
-    const time =
-      arg.view.type === "dayGridMonth"
-        ? undefined
-        : `${pad2(arg.start.getHours())}:${pad2(arg.start.getMinutes())}`;
-    openCreate(date, time);
+    openCreate(toISODate(arg.start));
     calendarRef.current?.getApi().unselect();
   }
 
@@ -207,7 +195,7 @@ export function CalendarPage() {
       return;
     }
     const raw = arg.event.extendedProps.raw as CalEvent | undefined;
-    if (raw) openEdit(raw);
+    if (raw) navigate(`/jobs/${raw._id}`);
   }
 
   function onDateClick(arg: DateClickInfo) {
@@ -223,14 +211,14 @@ export function CalendarPage() {
       const prev = lastTapRef.current;
       if (prev && prev.key === key && now - prev.at < 400) {
         lastTapRef.current = null;
-        openCreate(date, time);
+        openCreate(date);
       } else {
         lastTapRef.current = { key, at: now };
       }
       return;
     }
 
-    openCreate(date, time);
+    openCreate(date);
   }
 
   function renderEventContent(arg: EventDisplayInfo) {
@@ -243,21 +231,14 @@ export function CalendarPage() {
       );
     }
     const raw = arg.event.extendedProps.raw as CalEvent | undefined;
-    const clientName = raw?.client?.name?.trim();
     const status = raw?.status ?? "booked";
+    const clientName = truncate(raw?.client?.name?.trim() ?? raw?.title ?? "", 10);
+    const workerCount = raw?.workerIds?.length ?? 0;
     return (
-      <div className="moshko-event-content">
-        <div className="moshko-event-status">
-          <span className={statusDotClass(status)} aria-hidden />
-          {t(`calendar.statusShort.${status}`)}
-        </div>
-        {arg.timeText ? (
-          <div className="moshko-event-time">{arg.timeText}</div>
-        ) : null}
-        <div className="moshko-event-title">{arg.event.title}</div>
-        {clientName ? (
-          <div className="moshko-event-client">{clientName}</div>
-        ) : null}
+      <div className="moshko-event-content moshko-event-pill">
+        <span className={statusDotClass(status)} aria-hidden />
+        <span className="moshko-event-client-short">{clientName || "—"}</span>
+        <span className="moshko-event-workers">×{workerCount}</span>
       </div>
     );
   }
@@ -281,6 +262,7 @@ export function CalendarPage() {
           >
             {t("calendar.today")}
           </Button>
+          {/* In RTL, visual “previous” should still call api.prev(); show ‹ on the start side */}
           <Button
             type="button"
             variant="secondary"
@@ -289,7 +271,7 @@ export function CalendarPage() {
             onClick={() => calendarRef.current?.getApi().prev()}
             aria-label="prev"
           >
-            {isHe ? "›" : "‹"}
+            ‹
           </Button>
           <Button
             type="button"
@@ -299,7 +281,7 @@ export function CalendarPage() {
             onClick={() => calendarRef.current?.getApi().next()}
             aria-label="next"
           >
-            {isHe ? "‹" : "›"}
+            ›
           </Button>
         </div>
 
@@ -342,28 +324,40 @@ export function CalendarPage() {
         >
           {t("calendar.addEvent")}
         </Button>
-        <Button size="sm" onClick={() => openCreate(toISODate(new Date()))}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() =>
+            navigate(`/jobs/new?mode=job&date=${toISODate(new Date())}`)
+          }
+        >
+          {t("quotes.newJob")}
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => openCreate(toISODate(new Date()))}
+        >
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">{t("calendar.add")}</span>
+          <span className="hidden sm:inline">{t("quotes.newQuote")}</span>
         </Button>
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-3 border-b border-border px-3 py-1.5 text-[11px] text-muted md:px-4">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-3.5 rounded-sm bg-amber-200 ring-1 ring-amber-400/60" />
-          {t("calendar.jobLegend")}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className={statusDotClass("booked")} />
+          <span className="h-2.5 w-3.5 rounded-sm bg-amber-300 ring-1 ring-amber-500/50" />
           {t("calendar.status.booked")}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className={statusDotClass("approved")} />
+          <span className="h-2.5 w-3.5 rounded-sm bg-emerald-300 ring-1 ring-emerald-600/40" />
           {t("calendar.status.approved")}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className={statusDotClass("done")} />
+          <span className="h-2.5 w-3.5 rounded-sm bg-zinc-300 ring-1 ring-zinc-500/40" />
           {t("calendar.status.done")}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded-sm bg-rose-100 ring-1 ring-rose-300/60" />
+          {t("calendar.sundayLegend")}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-3.5 rounded-sm bg-sky-600 ring-1 ring-sky-800/40" />
@@ -384,45 +378,26 @@ export function CalendarPage() {
           headerToolbar={false}
           height="100%"
           direction={isHe ? "rtl" : "ltr"}
-          locale={isHe ? heLocale : "en"}
-          firstDay={0}
-          nowIndicator
-          editable={false}
-          selectable={!isMobile}
-          selectMirror={!isMobile}
-          dayMaxEvents={6}
-          weekends
-          slotMinTime="00:00:00"
-          slotMaxTime="24:00:00"
-          scrollTime="07:00:00"
-          scrollTimeReset={false}
-          allDaySlot
+          locale={isHe ? heLocale : undefined}
           events={fcEvents}
-          datesSet={onDatesSet}
+          selectable={!isMobile}
+          selectMirror
+          dateClick={onDateClick}
           select={onSelect}
           eventClick={onEventClick}
-          dateClick={onDateClick}
+          datesSet={onDatesSet}
           eventContent={renderEventContent}
-          eventTimeFormat={{
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }}
-          slotHeaderFormat={{
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }}
+          dayMaxEvents
+          nowIndicator
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
+          firstDay={0}
+          dayCellClass={(arg) =>
+            arg.date.getDay() === 0 ? "moshko-sunday" : undefined
+          }
         />
       </div>
 
-      <JobEventDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editing={editing}
-        initialDate={createDate}
-        initialStartTime={createStart}
-      />
       <CalendarLabelDialog
         open={labelOpen}
         onOpenChange={setLabelOpen}

@@ -13,6 +13,8 @@ import {
   Settings,
   MapPin,
   MoreHorizontal,
+  ClipboardList,
+  ClipboardPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,12 +28,14 @@ type NavItem = {
 const primaryMobile: NavItem[] = [
   { to: "/", icon: LayoutDashboard, key: "dashboard", end: true },
   { to: "/calendar", icon: CalendarDays, key: "calendar" },
-  { to: "/expenses", icon: Car, key: "expenses" },
+  { to: "/quotes", icon: ClipboardList, key: "quotes" },
+  { to: "/entries/add", icon: ClipboardPen, key: "addEntry" },
   { to: "/reports", icon: FileBarChart2, key: "reports" },
 ];
 
 const moreMobile: NavItem[] = [
-  { to: "/entries", icon: Clock3, key: "entries" },
+  { to: "/entries", icon: Clock3, key: "entries", end: true },
+  { to: "/expenses", icon: Car, key: "expenses" },
   { to: "/workers", icon: Users, key: "workers" },
   { to: "/clients", icon: Building2, key: "clients" },
   { to: "/cities", icon: MapPin, key: "cities" },
@@ -87,10 +91,18 @@ export function AppShell() {
   const moreRef = useRef<HTMLDivElement>(null);
   const isCalendar = location.pathname.startsWith("/calendar");
 
-  const moreActive = moreMobile.some(
-    (l) =>
-      location.pathname === l.to || location.pathname.startsWith(`${l.to}/`),
-  );
+  const moreActive = moreMobile.some((l) => {
+    if (l.to === "/entries") {
+      return (
+        location.pathname === "/entries" ||
+        location.pathname === "/entries/new"
+      );
+    }
+    return (
+      location.pathname === l.to ||
+      location.pathname.startsWith(`${l.to}/`)
+    );
+  });
 
   useEffect(() => {
     setMoreOpen(false);
