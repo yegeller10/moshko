@@ -220,6 +220,12 @@
     "searchJobs": "Search by date, client, or location",
     "noJobs": "No jobs available",
     "pickType": "What to add",
+    "types": {
+      "hours": "Hours",
+      "car": "Car",
+      "parking": "Parking",
+      "other": "Other"
+    },
     "save": "Save entry",
     "saved": "Saved",
     "openJob": "Open job",
