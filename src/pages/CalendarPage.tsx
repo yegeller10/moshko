@@ -126,7 +126,9 @@ export function CalendarPage() {
       end: `${e.date}T${e.endTime}:00`,
       // FullCalendar v7 uses `className` (not legacy `classNames`)
       className: jobClassName(e.status),
-      color: "#fef08a",
+      // Block display = solid month bar (like holidays), not a tiny colored dot
+      display: "block" as const,
+      color: "#fde047",
       contrastColor: "#713f12",
       extendedProps: { kind: "job" as const, raw: e },
     }));
@@ -139,8 +141,9 @@ export function CalendarPage() {
         className: isHoliday
           ? "moshko-label-holiday"
           : "moshko-label-personal",
+        // White text on solid brand color so labels stay readable
         color: isHoliday ? "#0b6fc2" : "#7c3aed",
-        contrastColor: isHoliday ? "#085a9e" : "#5b21b6",
+        contrastColor: "#ffffff",
         display: "block" as const,
         extendedProps: { kind: "label" as const, raw: l },
       };
@@ -363,7 +366,7 @@ export function CalendarPage() {
           {t("calendar.status.done")}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-3.5 rounded-sm bg-sky-200 ring-1 ring-sky-500/50" />
+          <span className="h-2.5 w-3.5 rounded-sm bg-sky-600 ring-1 ring-sky-800/40" />
           {t("calendar.holiday")}
         </span>
       </div>

@@ -51,10 +51,18 @@
 
 .moshko-calendar .fc .fc-event .fc-event-main {
   overflow: hidden;
+  color: inherit;
 }
 
 .moshko-calendar .fc .fc-daygrid-event {
   white-space: normal;
+  margin: 1px 2px;
+}
+
+/* Hide Monarch/FC colored "dot" next to month list events */
+.moshko-calendar .fc .fc-daygrid-event-dot,
+.moshko-calendar .fc .fc-list-event-dot {
+  display: none !important;
 }
 
 .moshko-calendar .moshko-event-content {
@@ -62,11 +70,12 @@
   flex-direction: column;
   gap: 0.05rem;
   min-width: 0;
-  padding: 1px 3px;
+  padding: 2px 4px;
   line-height: 1.2;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+  color: inherit;
 }
 
 .moshko-calendar .moshko-event-status {
@@ -108,7 +117,7 @@
 .moshko-calendar .moshko-event-time {
   font-size: 0.65rem;
   font-weight: 700;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .moshko-calendar .moshko-event-title {
@@ -117,52 +126,61 @@
 
 .moshko-calendar .moshko-event-client {
   font-weight: 500;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .moshko-calendar .fc .fc-timegrid-event .moshko-event-content {
   height: 100%;
 }
 
-/* Jobs: light yellow (status shown via colored dots) */
-.moshko-calendar .fc .fc-event.moshko-event-job {
-  --fc-event-color: #fef08a;
+/* Jobs: solid light-yellow bar covering full event text */
+.moshko-calendar .fc .fc-event.moshko-event-job,
+.moshko-calendar .fc .fc-event.moshko-event-job .fc-event-main {
+  --fc-event-color: #fde047;
   --fc-event-contrast-color: #713f12;
-  background: #fef9c3 !important;
-  border-color: #eab308 !important;
+  background-color: #fef08a !important;
+  border-color: #ca8a04 !important;
   color: #713f12 !important;
 }
 
-.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-done {
-  background: #f5f5f4 !important;
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-done,
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-done .fc-event-main {
+  background-color: #f5f5f4 !important;
   border-color: #a8a29e !important;
   color: #44403c !important;
-  opacity: 0.92;
 }
 
-.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-cancelled {
-  background: #fee2e2 !important;
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-cancelled,
+.moshko-calendar .fc .fc-event.moshko-event-job.moshko-status-cancelled .fc-event-main {
+  background-color: #fee2e2 !important;
   border-color: #f87171 !important;
   color: #991b1b !important;
-  opacity: 0.85;
+  opacity: 0.9;
   text-decoration: line-through;
 }
 
-/* Holidays: light blue */
-.moshko-calendar .fc .fc-event.moshko-label-holiday {
+/* Holidays: solid blue + white text (readable) */
+.moshko-calendar .fc .fc-event.moshko-label-holiday,
+.moshko-calendar .fc .fc-event.moshko-label-holiday .fc-event-main {
   --fc-event-color: #0b6fc2;
-  --fc-event-contrast-color: #085a9e;
-  background: #e8f3fb !important;
-  border-color: #0b6fc2 !important;
-  color: #085a9e !important;
+  --fc-event-contrast-color: #ffffff;
+  background-color: #0b6fc2 !important;
+  border-color: #085a9e !important;
+  color: #ffffff !important;
 }
 
-.moshko-calendar .fc .fc-event.moshko-label-personal {
+.moshko-calendar .fc .fc-event.moshko-label-personal,
+.moshko-calendar .fc .fc-event.moshko-label-personal .fc-event-main {
   --fc-event-color: #7c3aed;
-  --fc-event-contrast-color: #5b21b6;
-  background: #ede9fe !important;
-  border-color: #7c3aed !important;
-  color: #5b21b6 !important;
+  --fc-event-contrast-color: #ffffff;
+  background-color: #7c3aed !important;
+  border-color: #5b21b6 !important;
+  color: #ffffff !important;
+}
+
+.moshko-calendar .fc .fc-event.moshko-label-holiday .moshko-event-title,
+.moshko-calendar .fc .fc-event.moshko-label-personal .moshko-event-title {
+  color: #ffffff !important;
 }
 
 .moshko-calendar .fc .fc-daygrid-event,

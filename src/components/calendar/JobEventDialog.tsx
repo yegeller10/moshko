@@ -331,7 +331,7 @@ export function JobEventDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl" showClose>
+        <DialogContent className="max-w-3xl" showClose>
           <DialogHeader>
             <DialogTitle>
               {editing ? t("calendar.edit") : t("calendar.add")}
@@ -434,87 +434,27 @@ export function JobEventDialog({
                 {form.assignments.map((row) => (
                   <div
                     key={row.key}
-                    className="grid gap-2 rounded-lg bg-zinc-50 p-2 sm:grid-cols-6"
+                    className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3"
                   >
-                    <div className="sm:col-span-2">
-                      <Label className="text-xs">{t("entries.worker")}</Label>
-                      <Select
-                        required
-                        value={row.workerId}
-                        onChange={(e) =>
-                          updateAssignment(row.key, {
-                            workerId: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">—</option>
-                        {(workers ?? []).map((w) => (
-                          <option key={w._id} value={w._id}>
-                            {w.displayName}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">{t("calendar.start")}</Label>
-                      <Input
-                        type="time"
-                        value={row.startTime}
-                        onChange={(e) =>
-                          updateAssignment(row.key, {
-                            startTime: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">{t("calendar.end")}</Label>
-                      <Input
-                        type="time"
-                        value={row.endTime}
-                        onChange={(e) =>
-                          updateAssignment(row.key, {
-                            endTime: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">
-                        {t("entries.shiftType")}
-                      </Label>
-                      <Select
-                        value={row.shiftType}
-                        onChange={(e) =>
-                          updateAssignment(row.key, {
-                            shiftType: e.target.value as ShiftType,
-                          })
-                        }
-                      >
-                        <option value="normal">
-                          {t("entries.shiftTypes.normal")}
-                        </option>
-                        <option value="saturday">
-                          {t("entries.shiftTypes.saturday")}
-                        </option>
-                      </Select>
-                    </div>
-                    <div className="flex items-end gap-1">
+                    <div className="flex items-end gap-2">
                       <div className="min-w-0 flex-1">
-                        <Label className="text-xs">
-                          {t("entries.travelHours")}
-                        </Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.25"
-                          value={row.travelHours}
+                        <Label className="text-xs">{t("entries.worker")}</Label>
+                        <Select
+                          required
+                          value={row.workerId}
                           onChange={(e) =>
                             updateAssignment(row.key, {
-                              travelHours: e.target.value,
+                              workerId: e.target.value,
                             })
                           }
-                        />
+                        >
+                          <option value="">—</option>
+                          {(workers ?? []).map((w) => (
+                            <option key={w._id} value={w._id}>
+                              {w.displayName}
+                            </option>
+                          ))}
+                        </Select>
                       </div>
                       <Button
                         type="button"
@@ -533,6 +473,68 @@ export function JobEventDialog({
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                      <div>
+                        <Label className="text-xs">{t("calendar.start")}</Label>
+                        <Input
+                          type="time"
+                          value={row.startTime}
+                          onChange={(e) =>
+                            updateAssignment(row.key, {
+                              startTime: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">{t("calendar.end")}</Label>
+                        <Input
+                          type="time"
+                          value={row.endTime}
+                          onChange={(e) =>
+                            updateAssignment(row.key, {
+                              endTime: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">
+                          {t("entries.shiftType")}
+                        </Label>
+                        <Select
+                          value={row.shiftType}
+                          onChange={(e) =>
+                            updateAssignment(row.key, {
+                              shiftType: e.target.value as ShiftType,
+                            })
+                          }
+                        >
+                          <option value="normal">
+                            {t("entries.shiftTypes.normal")}
+                          </option>
+                          <option value="saturday">
+                            {t("entries.shiftTypes.saturday")}
+                          </option>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">
+                          {t("entries.travelHours")}
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.25"
+                          value={row.travelHours}
+                          onChange={(e) =>
+                            updateAssignment(row.key, {
+                              travelHours: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
