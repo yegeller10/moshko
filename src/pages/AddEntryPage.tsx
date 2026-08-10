@@ -17,16 +17,16 @@ import { cn } from "@/lib/utils";
 import type { Id } from "../../convex/_generated/dataModel";
 
 type EntryKind = "hours" | "car" | "parking" | "other";
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 
 export function AddEntryPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "he" ? "he-IL" : "en-IL";
 
   const [step, setStep] = useState<Step>(1);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [jobId, setJobId] = useState("");
   const [kind, setKind] = useState<EntryKind | null>(null);
+  const [search, setSearch] = useState("");
 
   const [workerId, setWorkerId] = useState("");
   const [startTime, setStartTime] = useState("08:00");
@@ -47,12 +47,7 @@ export function AddEntryPage() {
 
   const workers = useQuery(api.workers.list, {});
   const rates = useQuery(api.expenses.getServiceRates);
-  const jobs = useQuery(
-    api.calendar.listForAttach,
-    step >= 2
-      ? { fromDate: date, toDate: date, includeQuotes: true }
-      : "skip",
-  );
+  const jobs = useQuery(api.calendar.listForAttach, { includeQuotes: true });
   const selectedJob = useQuery(
     api.calendar.get,
     jobId ? { id: jobId as Id<"calendarEvents"> } : "skip",
@@ -67,6 +62,24 @@ export function AddEntryPage() {
   const createEntry = useMutation(api.entries.create);
   const createExpense = useMutation(api.expenses.create);
   const approve = useMutation(api.calendar.setStatus);
+
+  const filteredJobs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!jobs) return [];
+    if (!q) return jobs;
+    return jobs.filter((job) => {
+      const hay = [
+        job.date,
+        job.clientName,
+        job.locationText ?? "",
+        job.title,
+        t(`calendar.status.${job.status}`),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [jobs, search, t]);
 
   const hours = useMemo(
     () => computeHours(startTime, endTime),
@@ -101,7 +114,21 @@ export function AddEntryPage() {
     setNote("");
     setTitle("");
     setError(null);
-    setStep(4);
+    setStep(3);
+  }
+
+  function resetWizard() {
+    setStep(1);
+    setJobId("");
+    setKind(null);
+    setSavedJobId(null);
+    setWorkerId("");
+    setTravelHours("");
+    setQuantity("1");
+    setUnitRate("");
+    setNote("");
+    setTitle("");
+    setError(null);
   }
 
   async function ensureApproved(): Promise<boolean> {
@@ -119,7 +146,7 @@ export function AddEntryPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!jobId || !kind) {
+    if (!jobId || !kind || !selectedJob) {
       setError("missing");
       return;
     }
@@ -156,23 +183,20 @@ export function AddEntryPage() {
         }
         const defaultTitle =
           kind === "parking" ? "parking" : kind === "other" ? "other" : "";
-        const expenseNote = [
-          title.trim() || defaultTitle,
-          note.trim(),
-        ]
+        const expenseNote = [title.trim() || defaultTitle, note.trim()]
           .filter(Boolean)
           .join(" — ");
         await createExpense({
           type: kind,
           calendarEventId,
-          date,
+          date: selectedJob.date,
           quantity: qty,
           unitRate: unitRate === "" ? undefined : Number(unitRate),
           note: expenseNote || undefined,
         });
       }
       setSavedJobId(calendarEventId);
-      setStep(5);
+      setStep(4);
     } catch (err) {
       console.error(err);
       setError("save");
@@ -190,47 +214,26 @@ export function AddEntryPage() {
 
       {step === 1 && (
         <Card className="space-y-3">
-          <div>
-            <Label>{t("entries.date")}</Label>
-            <Input
-              type="date"
-              required
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            className="w-full"
-            onClick={() => {
-              setJobId("");
-              setKind(null);
-              setStep(2);
-            }}
-          >
-            {t("actuals.next")}
-          </Button>
-        </Card>
-      )}
-
-      {step === 2 && (
-        <Card className="space-y-3">
-          <p className="text-sm font-medium">
-            {t("actuals.pickJob")} · {date}
-          </p>
+          <p className="text-sm font-medium">{t("actuals.pickJob")}</p>
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("actuals.searchJobs")}
+          />
           {jobs === undefined ? (
             <p className="text-sm text-muted">{t("common.loading")}</p>
-          ) : jobs.length === 0 ? (
+          ) : filteredJobs.length === 0 ? (
             <p className="text-sm text-muted">{t("actuals.noJobs")}</p>
           ) : (
-            <ul className="space-y-2">
-              {jobs.map((job) => (
+            <ul className="max-h-[28rem] space-y-2 overflow-y-auto">
+              {filteredJobs.map((job) => (
                 <li key={job._id}>
                   <button
                     type="button"
                     onClick={() => {
                       setJobId(job._id);
-                      setStep(3);
+                      setKind(null);
+                      setStep(2);
                     }}
                     className={cn(
                       "flex w-full flex-col gap-0.5 rounded-xl border border-border px-3 py-2.5 text-start hover:bg-zinc-50",
@@ -238,26 +241,34 @@ export function AddEntryPage() {
                     )}
                   >
                     <span className="font-medium">{job.clientName}</span>
+                    <span className="text-sm text-ink">
+                      {job.date}
+                      {job.locationText ? ` · ${job.locationText}` : ""}
+                    </span>
                     <span className="text-xs text-muted">
-                      {job.title} · {t(`calendar.status.${job.status}`)}
+                      {t(`calendar.status.${job.status}`)}
+                      {job.startTime && job.endTime
+                        ? ` · ${job.startTime}–${job.endTime}`
+                        : ""}
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setStep(1)}
-          >
-            {t("common.back")}
-          </Button>
         </Card>
       )}
 
-      {step === 3 && (
+      {step === 2 && (
         <Card className="space-y-3">
+          {selectedJob && (
+            <p className="text-sm text-muted">
+              {selectedJob.client?.name ?? "—"} · {selectedJob.date}
+              {selectedJob.locationText
+                ? ` · ${selectedJob.locationText}`
+                : ""}
+            </p>
+          )}
           <p className="text-sm font-medium">{t("actuals.pickType")}</p>
           <div className="grid grid-cols-2 gap-2">
             {kinds.map((k) => (
@@ -275,14 +286,14 @@ export function AddEntryPage() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => setStep(2)}
+            onClick={() => setStep(1)}
           >
             {t("common.back")}
           </Button>
         </Card>
       )}
 
-      {step === 4 && kind && (
+      {step === 3 && kind && (
         <form onSubmit={onSubmit} className="space-y-3">
           <Card className="space-y-3">
             <p className="text-sm font-medium">
@@ -433,7 +444,7 @@ export function AddEntryPage() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setStep(3)}
+                onClick={() => setStep(2)}
               >
                 {t("common.back")}
               </Button>
@@ -445,7 +456,7 @@ export function AddEntryPage() {
         </form>
       )}
 
-      {step === 5 && savedJobId && (
+      {step === 4 && savedJobId && (
         <Card className="space-y-3">
           <p className="font-medium text-emerald-800">{t("actuals.saved")}</p>
           <Link
@@ -454,22 +465,7 @@ export function AddEntryPage() {
           >
             {t("actuals.openJob")}
           </Link>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              setStep(1);
-              setJobId("");
-              setKind(null);
-              setSavedJobId(null);
-              setWorkerId("");
-              setTravelHours("");
-              setQuantity("1");
-              setUnitRate("");
-              setNote("");
-              setTitle("");
-            }}
-          >
+          <Button type="button" variant="secondary" onClick={resetWizard}>
             {t("actuals.addAnother")}
           </Button>
         </Card>
