@@ -185,7 +185,8 @@
     "editEvent": "Edit event",
     "holiday": "Holiday",
     "personalEvent": "Personal event",
-    "allDay": "All day"
+    "allDay": "All day",
+    "jobLegend": "Job"
   },
   "cities": {
     "title": "Cities & car rates",

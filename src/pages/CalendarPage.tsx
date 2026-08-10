@@ -80,11 +80,12 @@ function useIsMobileCalendar() {
   return isMobile;
 }
 
-function statusClass(status: JobStatus, saturday: boolean) {
-  if (status === "approved") return "moshko-event-approved";
-  if (status === "done") return "moshko-event-done";
-  if (saturday) return "moshko-event-saturday";
-  return "moshko-event-normal";
+function jobClassName(status: JobStatus) {
+  return `moshko-event-job moshko-status-${status}`;
+}
+
+function statusDotClass(status: JobStatus) {
+  return `moshko-status-dot moshko-status-dot--${status}`;
 }
 
 export function CalendarPage() {
@@ -123,19 +124,23 @@ export function CalendarPage() {
       title: e.title,
       start: `${e.date}T${e.startTime}:00`,
       end: `${e.date}T${e.endTime}:00`,
-      classNames: [statusClass(e.status, e.shiftType === "saturday")],
+      // FullCalendar v7 uses `className` (not legacy `classNames`)
+      className: jobClassName(e.status),
+      color: "#fef08a",
+      contrastColor: "#713f12",
       extendedProps: { kind: "job" as const, raw: e },
     }));
 
     const marks = (labels ?? []).map((l) => {
+      const isHoliday = l.kind === "holiday";
       const base = {
         id: `label-${l._id}`,
         title: l.title,
-        classNames: [
-          l.kind === "holiday"
-            ? "moshko-label-holiday"
-            : "moshko-label-personal",
-        ],
+        className: isHoliday
+          ? "moshko-label-holiday"
+          : "moshko-label-personal",
+        color: isHoliday ? "#0b6fc2" : "#7c3aed",
+        contrastColor: isHoliday ? "#085a9e" : "#5b21b6",
         display: "block" as const,
         extendedProps: { kind: "label" as const, raw: l },
       };
@@ -240,6 +245,7 @@ export function CalendarPage() {
     return (
       <div className="moshko-event-content">
         <div className="moshko-event-status">
+          <span className={statusDotClass(status)} aria-hidden />
           {t(`calendar.statusShort.${status}`)}
         </div>
         {arg.timeText ? (
@@ -340,20 +346,24 @@ export function CalendarPage() {
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-3 border-b border-border px-3 py-1.5 text-[11px] text-muted md:px-4">
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm bg-sky-400" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded-sm bg-amber-200 ring-1 ring-amber-400/60" />
+          {t("calendar.jobLegend")}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className={statusDotClass("booked")} />
           {t("calendar.status.booked")}
         </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className={statusDotClass("approved")} />
           {t("calendar.status.approved")}
         </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm bg-zinc-400" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className={statusDotClass("done")} />
           {t("calendar.status.done")}
         </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm bg-pink-400" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded-sm bg-sky-200 ring-1 ring-sky-500/50" />
           {t("calendar.holiday")}
         </span>
       </div>

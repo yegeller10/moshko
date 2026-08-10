@@ -185,7 +185,8 @@
     "editEvent": "עריכת אירוע",
     "holiday": "חג",
     "personalEvent": "אירוע אישי",
-    "allDay": "יום שלם"
+    "allDay": "יום שלם",
+    "jobLegend": "עבודה"
   },
   "cities": {
     "title": "ערים ותעריפי רכב",
