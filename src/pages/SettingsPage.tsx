@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Id } from "../../convex/_generated/dataModel";
+import { OfferSettingsCard } from "@/components/settings/OfferSettingsCard";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -255,6 +256,8 @@ export function SettingsPage() {
           <p className="text-xs text-red-700">{t("common.error")}</p>
         )}
       </Card>
+
+      <OfferSettingsCard />
 
       <Card className="space-y-3">
         <h3 className="font-semibold">{t("settings.invite")}</h3>

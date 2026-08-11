@@ -102,10 +102,15 @@ export function QuotesPage() {
     <div className="w-full space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold md:text-2xl">{t("quotes.title")}</h2>
-        <Button size="sm" onClick={() => navigate("/jobs/new")}>
-          <Plus className="h-4 w-4" />
-          {t("jobs.newJob")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" onClick={() => navigate("/offers")}>
+            {t("offers.titleList")}
+          </Button>
+          <Button size="sm" onClick={() => navigate("/jobs/new")}>
+            <Plus className="h-4 w-4" />
+            {t("jobs.newJob")}
+          </Button>
+        </div>
       </div>
 
       <Card className="space-y-3">

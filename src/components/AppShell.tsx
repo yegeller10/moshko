@@ -30,6 +30,7 @@ const primaryMobile: NavItem[] = [
 ];
 
 const moreMobile: NavItem[] = [
+  { to: "/offers", icon: ClipboardList, key: "offers" },
   { to: "/workers", icon: Users, key: "workers" },
   { to: "/clients", icon: Building2, key: "clients" },
   { to: "/cities", icon: MapPin, key: "cities" },

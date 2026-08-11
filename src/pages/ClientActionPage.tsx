@@ -29,6 +29,7 @@ export function ClientActionPage({ token }: { token: string }) {
 
   const title = useMemo(() => {
     if (!data) return t("clientLink.title");
+    if (data.kind === "offer") return t("clientLink.offerTitle");
     return data.kind === "quote"
       ? t("clientLink.quoteTitle")
       : t("clientLink.orderTitle");
@@ -88,6 +89,9 @@ export function ClientActionPage({ token }: { token: string }) {
     );
   }
 
+  const decisionNote =
+    data.offer?.clientDecisionNote ?? data.job?.clientDecisionNote;
+
   if (mode === "done" || !data.open) {
     const decision =
       doneDecision ??
@@ -109,8 +113,102 @@ export function ClientActionPage({ token }: { token: string }) {
                   ? t("clientLink.expired")
                   : t("clientLink.alreadyUsed")}
           </p>
-          {data.job.clientDecisionNote && (
-            <p className="text-sm text-muted">{data.job.clientDecisionNote}</p>
+          {decisionNote && (
+            <p className="text-sm text-muted">{decisionNote}</p>
+          )}
+        </Card>
+      </Shell>
+    );
+  }
+
+  if (data.kind === "offer" && data.offer) {
+    const offer = data.offer;
+    return (
+      <Shell>
+        <Card className="w-full max-w-lg space-y-4 p-5">
+          <div>
+            <p className="text-sm font-semibold text-brand">{t("appName")}</p>
+            <h1 className="text-xl font-bold">{title}</h1>
+            <p className="text-sm text-muted">{offer.clientName}</p>
+            <p className="text-sm font-medium">
+              {t("offers.offerNumber", { n: offer.number })}
+            </p>
+          </div>
+
+          <p className="text-sm">{offer.title}</p>
+          {offer.dates.length > 0 && (
+            <p className="text-sm text-muted">{offer.dates.join(", ")}</p>
+          )}
+
+          <ul className="space-y-2 text-sm">
+            {offer.lineItems.map((l, i) => (
+              <li key={i} className="rounded-xl border border-border px-3 py-2">
+                <p>
+                  {l.quantity} × {l.description}
+                </p>
+                <p className="text-muted">{formatMoney(l.total, locale)}</p>
+              </li>
+            ))}
+          </ul>
+
+          <div className="space-y-1 rounded-xl border border-border bg-zinc-50 px-3 py-2 text-sm">
+            <p>
+              {t("offers.subtotal")}: {formatMoney(offer.subtotal, locale)}
+            </p>
+            <p>
+              {t("offers.vat", { pct: Math.round(offer.vatRate * 100) })}:{" "}
+              {formatMoney(offer.vatAmount, locale)}
+            </p>
+            <p className="font-semibold text-brand">
+              {t("offers.grandTotal")}: {formatMoney(offer.grandTotal, locale)}
+            </p>
+          </div>
+
+          {error && <p className="text-sm text-red-700">{error}</p>}
+
+          {mode === "view" && (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                className="flex-1"
+                disabled={saving}
+                onClick={() => void onAccept()}
+              >
+                {t("clientLink.accept")}
+              </Button>
+              <Button
+                className="flex-1"
+                variant="secondary"
+                disabled={saving}
+                onClick={() => setMode("dispute")}
+              >
+                {t("clientLink.dispute")}
+              </Button>
+            </div>
+          )}
+
+          {mode === "dispute" && (
+            <form onSubmit={onDispute} className="space-y-3">
+              <div>
+                <Label>{t("clientLink.disputeNote")}</Label>
+                <Input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={t("clientLink.disputePlaceholder")}
+                />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setMode("view")}
+                >
+                  {t("common.back")}
+                </Button>
+                <Button type="submit" disabled={saving} className="flex-1">
+                  {saving ? t("common.loading") : t("clientLink.submitDispute")}
+                </Button>
+              </div>
+            </form>
           )}
         </Card>
       </Shell>
@@ -118,6 +216,16 @@ export function ClientActionPage({ token }: { token: string }) {
   }
 
   const job = data.job;
+  if (!job) {
+    return (
+      <Shell>
+        <Card className="space-y-2 p-6 text-center">
+          <h1 className="text-xl font-bold">{t("appName")}</h1>
+          <p className="text-sm text-red-700">{t("clientLink.invalid")}</p>
+        </Card>
+      </Shell>
+    );
+  }
 
   return (
     <Shell>

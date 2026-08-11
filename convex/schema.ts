@@ -275,11 +275,16 @@ export default defineSchema({
     parkingRate: v.optional(v.number()),
   }).index("by_key", ["key"]),
 
-  /** Magic links for client quote/order confirm & dispute (no login). */
+  /** Magic links for client quote/order/offer confirm & dispute (no login). */
   emailLinks: defineTable({
     token: v.string(),
-    jobId: v.id("calendarEvents"),
-    kind: v.union(v.literal("quote"), v.literal("order")),
+    jobId: v.optional(v.id("calendarEvents")),
+    offerId: v.optional(v.id("offers")),
+    kind: v.union(
+      v.literal("quote"),
+      v.literal("order"),
+      v.literal("offer"),
+    ),
     toEmail: v.string(),
     status: v.union(
       v.literal("pending"),
@@ -295,5 +300,79 @@ export default defineSchema({
     resendId: v.optional(v.string()),
   })
     .index("by_token", ["token"])
-    .index("by_job", ["jobId"]),
+    .index("by_job", ["jobId"])
+    .index("by_offer", ["offerId"]),
+
+  /** Formal client-facing offers (PDF) bundling one or more booked jobs. */
+  offers: defineTable({
+    number: v.number(),
+    clientId: v.id("clients"),
+    jobIds: v.array(v.id("calendarEvents")),
+    title: v.string(),
+    attention: v.optional(v.string()),
+    lineItems: v.array(
+      v.object({
+        quantity: v.number(),
+        description: v.string(),
+        unitPrice: v.number(),
+        total: v.number(),
+      }),
+    ),
+    subtotal: v.number(),
+    vatRate: v.number(),
+    vatAmount: v.number(),
+    grandTotal: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("accepted"),
+      v.literal("disputed"),
+      v.literal("cancelled"),
+    ),
+    companySnapshot: v.object({
+      name: v.string(),
+      vatId: v.string(),
+      address: v.string(),
+      emails: v.string(),
+    }),
+    bankSnapshot: v.object({
+      payee: v.string(),
+      bank: v.string(),
+      branch: v.string(),
+      account: v.string(),
+      paymentTerms: v.string(),
+    }),
+    contentHash: v.optional(v.string()),
+    issuedAt: v.optional(v.number()),
+    pdfStorageId: v.optional(v.id("_storage")),
+    sentToEmail: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_number", ["number"])
+    .index("by_client", ["clientId"])
+    .index("by_status", ["status"]),
+
+  /** Singleton settings for offer PDF/email templates and company details. */
+  offerSettings: defineTable({
+    key: v.literal("default"),
+    nextNumber: v.number(),
+    vatPercent: v.number(),
+    companyName: v.string(),
+    companyVatId: v.string(),
+    companyAddress: v.string(),
+    companyEmails: v.string(),
+    bankPayee: v.string(),
+    bankName: v.string(),
+    bankBranch: v.string(),
+    bankAccount: v.string(),
+    paymentTerms: v.string(),
+    /** Description pattern; placeholders: {{date}}, {{hours}}, {{workers}} */
+    workerLineTemplate: v.string(),
+    carLineTemplate: v.string(),
+    emailSubjectTemplate: v.string(),
+    emailBodyTemplate: v.string(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

@@ -20,6 +20,9 @@ import { ImportPage } from "@/pages/ImportPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { CitiesPage } from "@/pages/CitiesPage";
 import { ClientActionRoute } from "@/pages/ClientActionRoute";
+import { OffersPage } from "@/pages/OffersPage";
+import { OfferComposerPage } from "@/pages/OfferComposerPage";
+import { OfferDetailPage } from "@/pages/OfferDetailPage";
 
 export function App() {
   return (
@@ -39,6 +42,9 @@ export function App() {
             <Route index element={<DashboardPage />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="quotes" element={<QuotesPage />} />
+            <Route path="offers" element={<OffersPage />} />
+            <Route path="offers/new" element={<OfferComposerPage />} />
+            <Route path="offers/:id" element={<OfferDetailPage />} />
             <Route path="jobs/new" element={<JobPage />} />
             <Route path="jobs/:id" element={<JobPage />} />
             <Route path="entries" element={<EntriesPage />} />

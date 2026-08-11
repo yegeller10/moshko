@@ -51,7 +51,7 @@ First Google sign-in becomes the first admin. Later admins must be invited from 
 
 ## Email (Resend + magic links)
 
-Outbound quotes / order confirmations use **Resend**. Inbound stays on **Cloudflare Email Routing** → Gmail.
+Outbound quotes / formal offers / order confirmations use **Resend**. Inbound stays on **Cloudflare Email Routing** → Gmail.
 
 1. Create a [Resend](https://resend.com) account and verify your domain (SPF/DKIM DNS in Cloudflare).
 2. In the **Convex dashboard → Settings → Environment Variables** set:
@@ -59,9 +59,10 @@ Outbound quotes / order confirmations use **Resend**. Inbound stays on **Cloudfl
    - `EMAIL_FROM` (e.g. `quotes@yourdomain.com`)
    - `EMAIL_REPLY_TO` (optional; e.g. your Gmail so replies land in inbox)
 3. Client emails must exist on the client record.
-4. From a job summary, send **quote** (booked) or **order confirmation** (approved). The email includes **Accept** / **Dispute** links to `/c/<token>` (no login).
+4. From a **booked** job summary, open **Create / send offer** to build a formal Hebrew PDF (sample 308 style, 18% VAT), optionally bundle other booked jobs for the same client, edit line items, and email the PDF with Accept / Dispute links.
+5. Lightweight quote/order emails still work from the job summary. Company/bank/VAT and email templates are under **Settings → Offer templates**.
 
-Accepting a **quote** marks client accepted and sets the job to **approved**. Dispute stores a note on the job for you to follow up (Gmail still handles free-form replies via Routing).
+Accepting an **offer** (or a simple **quote**) marks client accepted and sets bundled booked jobs to **approved**. Dispute stores a note for follow-up (Gmail still handles free-form replies via Routing). PDFs are stamped **העתק נאמן למקור** with a content hash stored in Convex.
 
 ## Phase 2 (not built yet)
 

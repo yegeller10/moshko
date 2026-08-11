@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -143,6 +144,14 @@ export function JobSummary({
             {job.clientDecisionEmail ? ` · ${job.clientDecisionEmail}` : ""}
             {job.clientDecisionNote ? ` — ${job.clientDecisionNote}` : ""}
           </p>
+        )}
+
+        {status === "booked" && (
+          <Button asChild type="button" className="w-full sm:w-auto">
+            <Link to={`/offers/new?jobId=${jobId}`}>
+              {t("offers.createSend")}
+            </Link>
+          </Button>
         )}
 
         <SendJobEmailButtons

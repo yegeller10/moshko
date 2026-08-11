@@ -2,10 +2,57 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 import { materializeJobForClient, normalizeAssignments } from "./calendar";
+import { applyOfferClientDecision } from "./offers";
 import { workerDisplayName } from "./workers";
 
 const linkKind = v.union(v.literal("quote"), v.literal("order"));
 const LINK_TTL_MS = 1000 * 60 * 60 * 24 * 21; // 21 days
+
+export const createForOffer = internalMutation({
+  args: {
+    offerId: v.id("offers"),
+    toEmail: v.string(),
+    token: v.string(),
+    createdBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const offer = await ctx.db.get(args.offerId);
+    if (!offer) throw new ConvexError("Offer not found");
+    if (offer.status === "cancelled") {
+      throw new ConvexError("Cannot email a cancelled offer");
+    }
+
+    const email = args.toEmail.trim().toLowerCase();
+    if (!email.includes("@")) throw new ConvexError("Invalid email");
+
+    const existing = await ctx.db
+      .query("emailLinks")
+      .withIndex("by_offer", (q) => q.eq("offerId", args.offerId))
+      .collect();
+    const now = Date.now();
+    for (const link of existing) {
+      if (link.status === "pending") {
+        await ctx.db.patch(link._id, { status: "revoked" });
+      }
+    }
+
+    const id = await ctx.db.insert("emailLinks", {
+      token: args.token,
+      offerId: args.offerId,
+      kind: "offer",
+      toEmail: email,
+      status: "pending",
+      expiresAt: now + LINK_TTL_MS,
+      createdAt: now,
+      createdBy: args.createdBy,
+    });
+
+    return {
+      linkId: id,
+      expiresAt: now + LINK_TTL_MS,
+    };
+  },
+});
 
 export const createForSend = internalMutation({
   args: {
@@ -117,6 +164,46 @@ export const getByToken = query({
       .unique();
     if (!link) return null;
 
+    const expired = Date.now() > link.expiresAt;
+    const open = link.status === "pending" && !expired;
+    const base = {
+      kind: link.kind,
+      status: expired && link.status === "pending" ? "expired" : link.status,
+      open,
+      toEmail: link.toEmail,
+      expiresAt: link.expiresAt,
+      disputeNote: link.disputeNote,
+    };
+
+    if (link.kind === "offer") {
+      if (!link.offerId) return null;
+      const offer = await ctx.db.get(link.offerId);
+      if (!offer) return null;
+      const client = await ctx.db.get(offer.clientId);
+      const jobs = (
+        await Promise.all(offer.jobIds.map((id) => ctx.db.get(id)))
+      ).filter(Boolean);
+      return {
+        ...base,
+        offer: {
+          number: offer.number,
+          title: offer.title,
+          attention: offer.attention,
+          lineItems: offer.lineItems,
+          subtotal: offer.subtotal,
+          vatRate: offer.vatRate,
+          vatAmount: offer.vatAmount,
+          grandTotal: offer.grandTotal,
+          clientName: client?.name ?? "—",
+          dates: jobs.map((j) => j!.date).sort(),
+          clientDecisionNote:
+            jobs.find((j) => j!.clientDecisionNote)?.clientDecisionNote,
+        },
+        job: null,
+      };
+    }
+
+    if (!link.jobId) return null;
     const job = await ctx.db.get(link.jobId);
     if (!job) return null;
     const client = await ctx.db.get(job.clientId);
@@ -139,16 +226,9 @@ export const getByToken = query({
       }),
     );
 
-    const expired = Date.now() > link.expiresAt;
-    const open = link.status === "pending" && !expired;
-
     return {
-      kind: link.kind,
-      status: expired && link.status === "pending" ? "expired" : link.status,
-      open,
-      toEmail: link.toEmail,
-      expiresAt: link.expiresAt,
-      disputeNote: link.disputeNote,
+      ...base,
+      offer: null,
       job: {
         date: job.date,
         locationText: job.locationText,
@@ -189,14 +269,31 @@ export const respond = mutation({
       throw new ConvexError("Link expired");
     }
 
+    const now = Date.now();
+    const note = args.note?.trim() || undefined;
+
+    if (link.kind === "offer") {
+      if (!link.offerId) throw new ConvexError("Offer not found");
+      await ctx.db.patch(link._id, {
+        status: args.decision === "accepted" ? "accepted" : "disputed",
+        disputeNote: note,
+        respondedAt: now,
+      });
+      await applyOfferClientDecision(ctx, {
+        offerId: link.offerId,
+        decision: args.decision,
+        note,
+        email: link.toEmail,
+      });
+      return { ok: true as const, decision: args.decision };
+    }
+
+    if (!link.jobId) throw new ConvexError("Job not found");
     const job = await ctx.db.get(link.jobId);
     if (!job) throw new ConvexError("Job not found");
     if (job.status === "cancelled") {
       throw new ConvexError("Job cancelled");
     }
-
-    const now = Date.now();
-    const note = args.note?.trim() || undefined;
 
     if (args.decision === "disputed") {
       await ctx.db.patch(link._id, {
