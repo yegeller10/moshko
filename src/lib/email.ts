@@ -1,4 +1,5 @@
-// Phase 2 email hook (not implemented)
+// Resend send lives in convex/emails.ts (Convex action).
+// Client magic-link confirm/dispute: /c/:token → emailLinks.respond
 
 export type MonthlyReportEmailPayload = {
   clientEmail: string;
@@ -8,10 +9,7 @@ export type MonthlyReportEmailPayload = {
   htmlBody: string;
 };
 
-/**
- * Placeholder for future Resend / Cloudflare Email / similar.
- * Wire a Convex action here when ready to send monthly confirmation emails.
- */
+/** Placeholder for future monthly report emails via the same Resend setup. */
 export async function sendMonthlyReportEmail(
   _payload: MonthlyReportEmailPayload,
 ): Promise<{ ok: false; reason: "not_implemented" }> {

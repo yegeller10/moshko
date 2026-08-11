@@ -173,6 +173,12 @@ export default defineSchema({
     includeCar: v.boolean(),
     status: jobStatusValidator,
     locationText: v.optional(v.string()),
+    clientDecision: v.optional(
+      v.union(v.literal("accepted"), v.literal("disputed")),
+    ),
+    clientDecisionNote: v.optional(v.string()),
+    clientDecisionAt: v.optional(v.number()),
+    clientDecisionEmail: v.optional(v.string()),
     draftCharges: v.optional(
       v.array(
         v.object({
@@ -268,4 +274,26 @@ export default defineSchema({
     carHourlyRate: v.optional(v.number()),
     parkingRate: v.optional(v.number()),
   }).index("by_key", ["key"]),
+
+  /** Magic links for client quote/order confirm & dispute (no login). */
+  emailLinks: defineTable({
+    token: v.string(),
+    jobId: v.id("calendarEvents"),
+    kind: v.union(v.literal("quote"), v.literal("order")),
+    toEmail: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("disputed"),
+      v.literal("revoked"),
+    ),
+    disputeNote: v.optional(v.string()),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    resendId: v.optional(v.string()),
+  })
+    .index("by_token", ["token"])
+    .index("by_job", ["jobId"]),
 });

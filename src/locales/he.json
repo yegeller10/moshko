@@ -236,7 +236,36 @@
     "chargeKind": "סוג",
     "emailComingSoon": "אישור במייל — בהמשך",
     "sendQuoteEmail": "שליחת הצעה במייל",
-    "sendOrderConfirmation": "שליחת אישור הזמנה"
+    "sendOrderConfirmation": "שליחת אישור הזמנה",
+    "emailTo": "שליחה אל",
+    "emailMissing": "ללקוח אין אימייל — הוסיפו בדף הלקוח",
+    "emailSent": "נשלח אל {{email}}",
+    "lastEmail": "מייל אחרון",
+    "linkStatus": {
+      "pending": "ממתין לתגובה",
+      "accepted": "אושר ע״י לקוח",
+      "disputed": "ערעור",
+      "revoked": "בוטל"
+    },
+    "clientDecision": {
+      "accepted": "הלקוח אישר",
+      "disputed": "הלקוח ערער"
+    }
+  },
+  "clientLink": {
+    "title": "פרטי עבודה",
+    "quoteTitle": "הצעת מחיר",
+    "orderTitle": "אישור הזמנה",
+    "invalid": "הקישור לא תקין",
+    "expired": "הקישור פג תוקף",
+    "alreadyUsed": "הקישור כבר נוצל",
+    "accept": "אישור",
+    "dispute": "ערעור",
+    "disputeNote": "פירוט הערעור",
+    "disputePlaceholder": "מה לא מסתדר?",
+    "submitDispute": "שליחת ערעור",
+    "thanksAccepted": "תודה! האישור התקבל",
+    "thanksDisputed": "הערעור התקבל — ניצור קשר"
   },
   "actuals": {
     "title": "הוספת רשומה",

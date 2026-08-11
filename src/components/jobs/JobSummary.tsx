@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatMoney } from "@/lib/costs";
 import { cn } from "@/lib/utils";
+import { SendJobEmailButtons } from "@/components/jobs/SendJobEmailButtons";
 
 function statusBadgeClass(status: string) {
   if (status === "approved") return "bg-emerald-100 text-emerald-800";
@@ -133,6 +134,25 @@ export function JobSummary({
             </Button>
           )}
         </div>
+
+        {job.clientDecision && (
+          <p className="text-sm">
+            <span className="font-semibold">
+              {t(`jobs.clientDecision.${job.clientDecision}`)}
+            </span>
+            {job.clientDecisionEmail ? ` · ${job.clientDecisionEmail}` : ""}
+            {job.clientDecisionNote ? ` — ${job.clientDecisionNote}` : ""}
+          </p>
+        )}
+
+        <SendJobEmailButtons
+          jobId={jobId}
+          status={status}
+          clientEmails={[
+            ...(job.client?.emails ?? []),
+            ...(job.client?.email ? [job.client.email] : []),
+          ]}
+        />
       </Card>
 
       <Card className="space-y-3 text-sm">

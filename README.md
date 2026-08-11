@@ -49,11 +49,25 @@ First Google sign-in becomes the first admin. Later admins must be invited from 
 - **GitHub**: push `main` — Actions runs CI
 - **Cloudflare Pages**: connect the repo, build `npm run build`, output `dist`, set `VITE_CONVEX_URL` + `VITE_WORKOS_CLIENT_ID` (+ redirect URI for Pages domain)
 
+## Email (Resend + magic links)
+
+Outbound quotes / order confirmations use **Resend**. Inbound stays on **Cloudflare Email Routing** → Gmail.
+
+1. Create a [Resend](https://resend.com) account and verify your domain (SPF/DKIM DNS in Cloudflare).
+2. In the **Convex dashboard → Settings → Environment Variables** set:
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM` (e.g. `quotes@yourdomain.com`)
+   - `EMAIL_REPLY_TO` (optional; e.g. your Gmail so replies land in inbox)
+3. Client emails must exist on the client record.
+4. From a job summary, send **quote** (booked) or **order confirmation** (approved). The email includes **Accept** / **Dispute** links to `/c/<token>` (no login).
+
+Accepting a **quote** marks client accepted and sets the job to **approved**. Dispute stores a note on the job for you to follow up (Gmail still handles free-form replies via Routing).
+
 ## Phase 2 (not built yet)
 
 - Overtime band thresholds (100–200%)
-- Email monthly reports / quote confirmation / order confirmation to clients
-- Domain mail forward for client replies
+- Email monthly reports to clients
+- In-app dispute message thread
 - **Auto-sync Israel holidays** (replace the one-time seed; current holiday seed was incomplete)
 
 ## CSV template

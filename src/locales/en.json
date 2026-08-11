@@ -236,7 +236,36 @@
     "chargeKind": "Type",
     "emailComingSoon": "Email confirmation — coming later",
     "sendQuoteEmail": "Send quote email",
-    "sendOrderConfirmation": "Send order confirmation"
+    "sendOrderConfirmation": "Send order confirmation",
+    "emailTo": "Send to",
+    "emailMissing": "Client has no email — add one on the client page",
+    "emailSent": "Sent to {{email}}",
+    "lastEmail": "Last email",
+    "linkStatus": {
+      "pending": "Awaiting reply",
+      "accepted": "Accepted by client",
+      "disputed": "Disputed",
+      "revoked": "Revoked"
+    },
+    "clientDecision": {
+      "accepted": "Client accepted",
+      "disputed": "Client disputed"
+    }
+  },
+  "clientLink": {
+    "title": "Job details",
+    "quoteTitle": "Quote",
+    "orderTitle": "Order confirmation",
+    "invalid": "This link is invalid",
+    "expired": "This link has expired",
+    "alreadyUsed": "This link was already used",
+    "accept": "Accept",
+    "dispute": "Dispute",
+    "disputeNote": "Dispute details",
+    "disputePlaceholder": "What needs changing?",
+    "submitDispute": "Submit dispute",
+    "thanksAccepted": "Thanks — confirmed",
+    "thanksDisputed": "Dispute received — we'll be in touch"
   },
   "actuals": {
     "title": "Add entry",

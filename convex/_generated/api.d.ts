@@ -15,6 +15,8 @@ import type * as calendar from "../calendar.js";
 import type * as calendarLabels from "../calendarLabels.js";
 import type * as cities from "../cities.js";
 import type * as clients from "../clients.js";
+import type * as emailLinks from "../emailLinks.js";
+import type * as emails from "../emails.js";
 import type * as entries from "../entries.js";
 import type * as expenses from "../expenses.js";
 import type * as import_ from "../import.js";
@@ -39,6 +41,8 @@ declare const fullApi: ApiFromModules<{
   calendarLabels: typeof calendarLabels;
   cities: typeof cities;
   clients: typeof clients;
+  emailLinks: typeof emailLinks;
+  emails: typeof emails;
   entries: typeof entries;
   expenses: typeof expenses;
   import: typeof import_;

@@ -19,6 +19,7 @@ import { ReportsPage } from "@/pages/ReportsPage";
 import { ImportPage } from "@/pages/ImportPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { CitiesPage } from "@/pages/CitiesPage";
+import { ClientActionRoute } from "@/pages/ClientActionRoute";
 
 export function App() {
   return (
@@ -27,6 +28,7 @@ export function App() {
         <Routes>
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/c/:token" element={<ClientActionRoute />} />
           <Route
             element={
               <AuthGate>

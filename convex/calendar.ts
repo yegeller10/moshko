@@ -272,6 +272,14 @@ async function materializeJob(
   );
 }
 
+/** Used by client magic-link accept (quote → approved). */
+export async function materializeJobForClient(
+  ctx: MutationCtx,
+  job: Doc<"calendarEvents">,
+) {
+  await materializeJob(ctx, job, normalizeAssignments(job), job.createdBy);
+}
+
 async function enrichJob(ctx: QueryCtx, e: Doc<"calendarEvents">) {
   const assignments = normalizeAssignments(e);
   const [client, city, workers, timeEntries, expenses] = await Promise.all([
