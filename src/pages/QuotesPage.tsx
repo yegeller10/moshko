@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
+import { ChevronDown, Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -70,6 +71,7 @@ export function QuotesPage() {
     "approved",
     "done",
   ]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const clients = useQuery(api.clients.list, {});
   const jobs = useQuery(
@@ -100,77 +102,87 @@ export function QuotesPage() {
     <div className="w-full space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold md:text-2xl">{t("quotes.title")}</h2>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => navigate("/jobs/new?mode=quote")}
-          >
-            {t("quotes.newQuote")}
-          </Button>
-          <Button size="sm" onClick={() => navigate("/jobs/new?mode=job")}>
-            {t("quotes.newJob")}
-          </Button>
-        </div>
+        <Button size="sm" onClick={() => navigate("/jobs/new")}>
+          <Plus className="h-4 w-4" />
+          {t("jobs.newJob")}
+        </Button>
       </div>
 
       <Card className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <Label>{t("quotes.fromDate")}</Label>
-            <Input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>{t("quotes.toDate")}</Label>
-            <Input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>{t("quotes.filterClient")}</Label>
-            <Select
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-            >
-              <option value="">{t("quotes.allClients")}</option>
-              {(clients ?? []).map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 text-start"
+        >
+          <span className="text-sm font-semibold">{t("quotes.filters")}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted transition-transform",
+              filtersOpen && "rotate-180",
+            )}
+          />
+        </button>
 
-        <div>
-          <Label>{t("quotes.filterStatus")}</Label>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {ALL_STATUSES.map((status) => {
-              const on = statusSet.has(status);
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => toggleStatus(status)}
-                  className={cn(
-                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                    on
-                      ? statusPillClass(status)
-                      : "border-border bg-white text-muted",
-                  )}
+        {filtersOpen && (
+          <>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label>{t("quotes.fromDate")}</Label>
+                <Input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>{t("quotes.toDate")}</Label>
+                <Input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>{t("quotes.filterClient")}</Label>
+                <Select
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
                 >
-                  {t(`calendar.status.${status}`)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                  <option value="">{t("quotes.allClients")}</option>
+                  {(clients ?? []).map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>{t("quotes.filterStatus")}</Label>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {ALL_STATUSES.map((status) => {
+                  const on = statusSet.has(status);
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => toggleStatus(status)}
+                      className={cn(
+                        "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                        on
+                          ? statusPillClass(status)
+                          : "border-border bg-white text-muted",
+                      )}
+                    >
+                      {t(`calendar.status.${status}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </Card>
 
       {statuses.length === 0 ? (

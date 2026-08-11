@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 type WorkerType = "owner" | "employee" | "independent";
 
@@ -22,6 +23,8 @@ const emptyForm = () => ({
   phone: "",
   carLicense: false,
   heightWorkLicense: false,
+  hourlyRate: "",
+  minimumHours: "6",
   active: true,
 });
 
@@ -34,18 +37,23 @@ export function WorkersPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
+  const [filterCar, setFilterCar] = useState(false);
+  const [filterHeight, setFilterHeight] = useState(false);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
     if (!workers) return [];
-    if (!q) return workers;
-    return workers.filter((w) =>
-      (w.displayName ?? "").toLowerCase().includes(q),
-    );
-  }, [workers, search]);
+    const q = search.trim().toLowerCase();
+    return workers.filter((w) => {
+      if (filterCar && !w.carLicense) return false;
+      if (filterHeight && !w.heightWorkLicense) return false;
+      if (!q) return true;
+      return (w.displayName ?? "").toLowerCase().includes(q);
+    });
+  }, [workers, search, filterCar, filterHeight]);
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
+    const isEmployee = form.type === "employee";
     await create({
       firstName: form.firstName.trim() || undefined,
       lastName: form.lastName.trim() || undefined,
@@ -56,6 +64,13 @@ export function WorkersPage() {
       phone: form.phone.trim() || undefined,
       carLicense: form.carLicense,
       heightWorkLicense: form.heightWorkLicense,
+      hourlyRate:
+        isEmployee && form.hourlyRate !== ""
+          ? Number(form.hourlyRate)
+          : undefined,
+      minimumHours: isEmployee
+        ? Number(form.minimumHours) || 6
+        : undefined,
       active: form.active,
     });
     setForm(emptyForm());
@@ -69,6 +84,33 @@ export function WorkersPage() {
         <Button size="sm" onClick={() => setOpen((v) => !v)}>
           {t("workers.add")}
         </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setFilterCar((v) => !v)}
+          className={cn(
+            "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+            filterCar
+              ? "border-sky-300 bg-sky-100 text-sky-900"
+              : "border-border bg-white text-muted",
+          )}
+        >
+          {t("workers.carLicense")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterHeight((v) => !v)}
+          className={cn(
+            "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+            filterHeight
+              ? "border-violet-300 bg-violet-100 text-violet-900"
+              : "border-border bg-white text-muted",
+          )}
+        >
+          {t("workers.heightWorkLicense")}
+        </button>
       </div>
 
       <Input
@@ -107,12 +149,17 @@ export function WorkersPage() {
               <Select
                 required
                 value={form.type}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const type = e.target.value as WorkerType;
                   setForm({
                     ...form,
-                    type: e.target.value as WorkerType,
-                  })
-                }
+                    type,
+                    minimumHours:
+                      type === "employee" && !form.minimumHours
+                        ? "6"
+                        : form.minimumHours,
+                  });
+                }}
               >
                 <option value="owner">{t("workers.types.owner")}</option>
                 <option value="employee">{t("workers.types.employee")}</option>
@@ -183,6 +230,35 @@ export function WorkersPage() {
                 <option value="no">{t("common.no")}</option>
               </Select>
             </div>
+            <div>
+              <Label>{t("workers.hourlyRate")}</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                disabled={form.type !== "employee"}
+                value={form.hourlyRate}
+                onChange={(e) =>
+                  setForm({ ...form, hourlyRate: e.target.value })
+                }
+                placeholder={
+                  form.type === "employee" ? undefined : t("workers.employeeOnly")
+                }
+              />
+            </div>
+            <div>
+              <Label>{t("workers.minimumHours")}</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.25"
+                disabled={form.type !== "employee"}
+                value={form.minimumHours}
+                onChange={(e) =>
+                  setForm({ ...form, minimumHours: e.target.value })
+                }
+              />
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -212,13 +288,25 @@ export function WorkersPage() {
                 className="flex items-start justify-between gap-2"
                 onDoubleClick={() => navigate(`/workers/${w._id}`)}
               >
-                <div className="min-w-0 space-y-0.5">
+                <div className="min-w-0 space-y-1.5">
                   <p className="font-medium">{w.displayName}</p>
                   {w.type && (
                     <p className="text-xs text-muted">
                       {t(`workers.types.${w.type}`)}
                     </p>
                   )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {w.carLicense && (
+                      <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+                        {t("workers.carLicenseShort")}
+                      </span>
+                    )}
+                    {w.heightWorkLicense && (
+                      <span className="rounded-md bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-900">
+                        {t("workers.heightLicenseShort")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -238,7 +326,7 @@ export function WorkersPage() {
                       })
                     }
                   >
-                    {w.active ? "Off" : "On"}
+                    {w.active ? t("common.off") : t("common.on")}
                   </Button>
                 </div>
               </Card>

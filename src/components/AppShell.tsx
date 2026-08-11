@@ -12,7 +12,6 @@ import {
   MapPin,
   MoreHorizontal,
   ClipboardList,
-  ClipboardPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +26,6 @@ const primaryMobile: NavItem[] = [
   { to: "/", icon: LayoutDashboard, key: "dashboard", end: true },
   { to: "/calendar", icon: CalendarDays, key: "calendar" },
   { to: "/quotes", icon: ClipboardList, key: "quotes" },
-  { to: "/entries/add", icon: ClipboardPen, key: "addEntry" },
   { to: "/reports", icon: FileBarChart2, key: "reports" },
 ];
 

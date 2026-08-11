@@ -176,11 +176,49 @@
   overflow: hidden;
 }
 
+.moshko-calendar .moshko-event-pill--condensed {
+  min-height: 1.1rem;
+  font-size: 0.65rem;
+  gap: 0.2rem;
+  padding-block: 0;
+}
+
 .moshko-calendar .moshko-event-client-short {
   font-weight: 700;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.moshko-calendar .moshko-event-marquee {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.moshko-calendar .moshko-event-marquee-text {
+  display: inline-block;
+  font-weight: 700;
+  white-space: nowrap;
+  padding-inline-end: 1.25rem;
+  animation: moshko-marquee 7s linear infinite;
+}
+
+@keyframes moshko-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(calc(-100% + 3.5rem));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moshko-calendar .moshko-event-marquee-text {
+    animation: none;
+  }
 }
 
 .moshko-calendar .moshko-event-workers {

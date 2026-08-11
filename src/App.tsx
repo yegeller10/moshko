@@ -10,7 +10,6 @@ import { QuotesPage } from "@/pages/QuotesPage";
 import { JobPage } from "@/pages/JobPage";
 import { EntriesPage } from "@/pages/EntriesPage";
 import { NewEntryPage } from "@/pages/NewEntryPage";
-import { AddEntryPage } from "@/pages/AddEntryPage";
 import { ExpensesPage } from "@/pages/ExpensesPage";
 import { WorkersPage } from "@/pages/WorkersPage";
 import { ClientsPage } from "@/pages/ClientsPage";
@@ -42,7 +41,7 @@ export function App() {
             <Route path="jobs/:id" element={<JobPage />} />
             <Route path="entries" element={<EntriesPage />} />
             <Route path="entries/new" element={<NewEntryPage />} />
-            <Route path="entries/add" element={<AddEntryPage />} />
+            <Route path="entries/add" element={<Navigate to="/quotes" replace />} />
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="workers" element={<WorkersPage />} />
             <Route path="workers/:id" element={<WorkerDetailPage />} />

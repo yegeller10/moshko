@@ -164,8 +164,16 @@ export function CalendarPage() {
     return [...marks, ...jobs];
   }, [events, labels]);
 
+  const jobCountByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of events ?? []) {
+      map.set(e.date, (map.get(e.date) ?? 0) + 1);
+    }
+    return map;
+  }, [events]);
+
   function openCreate(date: string) {
-    navigate(`/jobs/new?mode=quote&date=${encodeURIComponent(date)}`);
+    navigate(`/jobs/new?date=${encodeURIComponent(date)}`);
   }
 
   function onDatesSet(arg: DatesSetInfo) {
@@ -232,12 +240,28 @@ export function CalendarPage() {
     }
     const raw = arg.event.extendedProps.raw as CalEvent | undefined;
     const status = raw?.status ?? "booked";
-    const clientName = truncate(raw?.client?.name?.trim() ?? raw?.title ?? "", 10);
+    const fullClient = raw?.client?.name?.trim() ?? raw?.title ?? "";
     const workerCount = raw?.workerIds?.length ?? 0;
+    const dateKey = raw?.date ?? arg.event.startStr.slice(0, 10);
+    const dayCount = jobCountByDate.get(dateKey) ?? 0;
+    const condense = isMobile && dayCount > 3;
+    const clientLabel = condense ? truncate(fullClient, 8) : fullClient || "—";
+
     return (
-      <div className="moshko-event-content moshko-event-pill">
+      <div
+        className={cn(
+          "moshko-event-content moshko-event-pill",
+          condense && "moshko-event-pill--condensed",
+        )}
+      >
         <span className={statusDotClass(status)} aria-hidden />
-        <span className="moshko-event-client-short">{clientName || "—"}</span>
+        {condense ? (
+          <span className="moshko-event-client-short">{clientLabel}</span>
+        ) : (
+          <span className="moshko-event-marquee">
+            <span className="moshko-event-marquee-text">{clientLabel}</span>
+          </span>
+        )}
         <span className="moshko-event-workers">×{workerCount}</span>
       </div>
     );
@@ -326,19 +350,12 @@ export function CalendarPage() {
         </Button>
         <Button
           size="sm"
-          variant="secondary"
           onClick={() =>
-            navigate(`/jobs/new?mode=job&date=${toISODate(new Date())}`)
+            navigate(`/jobs/new?date=${toISODate(new Date())}`)
           }
         >
-          {t("quotes.newJob")}
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => openCreate(toISODate(new Date()))}
-        >
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">{t("quotes.newQuote")}</span>
+          <span className="hidden sm:inline">{t("jobs.newJob")}</span>
         </Button>
       </div>
 
@@ -387,7 +404,7 @@ export function CalendarPage() {
           eventClick={onEventClick}
           datesSet={onDatesSet}
           eventContent={renderEventContent}
-          dayMaxEvents
+          dayMaxEvents={false}
           nowIndicator
           slotMinTime="00:00:00"
           slotMaxTime="24:00:00"

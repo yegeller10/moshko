@@ -290,6 +290,10 @@ export const dashboardStats = query({
     const clients = await ctx.db.query("clients").collect();
     const activeClients = clients.filter((c) => c.active !== false).length;
 
+    const allJobs = await ctx.db.query("calendarEvents").collect();
+    const openQuotes = allJobs.filter((e) => e.status === "booked").length;
+    const openConfirmed = allJobs.filter((e) => e.status === "approved").length;
+
     let totalHours = 0;
     let laborCost = 0;
     for (const e of entries) {
@@ -325,6 +329,12 @@ export const dashboardStats = query({
       totalCost: Math.round((laborCost + expenseDone) * 100) / 100,
       activeClients,
       clientsWithWork: clientIds.size,
+      openOrdersTotal: openQuotes + openConfirmed,
+      openQuotes,
+      openConfirmed,
+      doneJobsCount: events.length,
+      doneJobsHours: Math.round(totalHours * 100) / 100,
+      doneJobsAmount: Math.round((laborCost + expenseDone) * 100) / 100,
     };
   },
 });

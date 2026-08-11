@@ -52,6 +52,8 @@ export const create = mutation({
     phone: v.optional(v.string()),
     carLicense: v.boolean(),
     heightWorkLicense: v.boolean(),
+    hourlyRate: v.optional(v.number()),
+    minimumHours: v.optional(v.number()),
     active: v.optional(v.boolean()),
     name: v.optional(v.string()),
   },
@@ -65,6 +67,7 @@ export const create = mutation({
       legacyName ||
       undefined;
 
+    const isEmployee = args.type === "employee";
     return await ctx.db.insert("workers", {
       name,
       firstName,
@@ -76,6 +79,10 @@ export const create = mutation({
       phone: args.phone?.trim() || undefined,
       carLicense: args.carLicense,
       heightWorkLicense: args.heightWorkLicense,
+      hourlyRate: isEmployee ? args.hourlyRate : undefined,
+      minimumHours: isEmployee
+        ? (args.minimumHours ?? 6)
+        : undefined,
       active: args.active ?? true,
     });
   },
@@ -93,6 +100,8 @@ export const update = mutation({
     phone: v.optional(v.string()),
     carLicense: v.optional(v.boolean()),
     heightWorkLicense: v.optional(v.boolean()),
+    hourlyRate: v.optional(v.union(v.number(), v.null())),
+    minimumHours: v.optional(v.union(v.number(), v.null())),
     active: v.optional(v.boolean()),
     name: v.optional(v.string()),
   },
@@ -110,6 +119,7 @@ export const update = mutation({
         ? args.lastName.trim() || undefined
         : existing.lastName;
 
+    const nextType = args.type ?? existing.type;
     const patch: Record<string, unknown> = {};
     if (args.firstName !== undefined) patch.firstName = firstName;
     if (args.lastName !== undefined) patch.lastName = lastName;
@@ -125,6 +135,22 @@ export const update = mutation({
     if (args.heightWorkLicense !== undefined)
       patch.heightWorkLicense = args.heightWorkLicense;
     if (args.active !== undefined) patch.active = args.active;
+
+    if (nextType === "employee") {
+      if (args.hourlyRate !== undefined) {
+        patch.hourlyRate =
+          args.hourlyRate === null ? undefined : args.hourlyRate;
+      }
+      if (args.minimumHours !== undefined) {
+        patch.minimumHours =
+          args.minimumHours === null ? undefined : args.minimumHours;
+      } else if (args.type === "employee" && existing.minimumHours == null) {
+        patch.minimumHours = 6;
+      }
+    } else if (args.type !== undefined && args.type !== "employee") {
+      patch.hourlyRate = undefined;
+      patch.minimumHours = undefined;
+    }
 
     const display =
       [firstName, lastName].filter(Boolean).join(" ").trim() ||

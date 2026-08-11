@@ -105,6 +105,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     carLicense: v.optional(v.boolean()),
     heightWorkLicense: v.optional(v.boolean()),
+    hourlyRate: v.optional(v.number()),
+    minimumHours: v.optional(v.number()),
     active: v.optional(v.boolean()),
   }).index("by_name", ["name"]),
 
