@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -81,23 +81,17 @@ function emptyAssignment(
   };
 }
 
-function emptyCharge(kind: "parking" | "other" = "parking"): DraftChargeRow {
+function emptyCharge(
+  kind: "parking" | "other" = "parking",
+  title = "",
+): DraftChargeRow {
   return {
     key: newKey(),
-    title: kind === "parking" ? "parking" : "other",
+    title,
     amount: "",
     note: "",
     kind,
   };
-}
-
-function defaultChargeTitle(kind: "parking" | "other") {
-  return kind === "parking" ? "parking" : "other";
-}
-
-function resolveChargeTitle(title: string, kind: "parking" | "other") {
-  const trimmed = title.trim();
-  return trimmed || defaultChargeTitle(kind);
 }
 
 function emptyForm(date?: string): FormState {
@@ -140,6 +134,31 @@ export function JobForm({
   const [quickWorker, setQuickWorker] = useState(false);
   const [quickClient, setQuickClient] = useState(false);
   const [quickCity, setQuickCity] = useState(false);
+  const [collapsedWorkers, setCollapsedWorkers] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  function chargeTitleForKind(kind: "parking" | "other") {
+    return kind === "parking" ? t("expenses.parking") : t("expenses.other");
+  }
+
+  function resolveChargeTitle(title: string, kind: "parking" | "other") {
+    const trimmed = title.trim();
+    return trimmed || chargeTitleForKind(kind);
+  }
+
+  function isDefaultChargeTitle(title: string, kind: "parking" | "other") {
+    const trimmed = title.trim();
+    if (!trimmed) return true;
+    const localized = chargeTitleForKind(kind);
+    return (
+      trimmed === localized ||
+      trimmed === (kind === "parking" ? "parking" : "other") ||
+      trimmed === (kind === "parking" ? "Parking" : "Other") ||
+      trimmed === (kind === "parking" ? "חניה" : "אחר") ||
+      trimmed === (kind === "parking" ? "חנייה" : "אחר")
+    );
+  }
 
   const clients = useQuery(api.clients.list, {});
   const cities = useQuery(api.cities.list, {});
@@ -282,14 +301,22 @@ export function JobForm({
         if (c.key !== key) return c;
         const next = { ...c, ...patch };
         if (patch.kind && patch.kind !== c.kind) {
-          const prevDefault = defaultChargeTitle(c.kind);
-          if (!c.title.trim() || c.title.trim() === prevDefault) {
-            next.title = defaultChargeTitle(patch.kind);
+          if (isDefaultChargeTitle(c.title, c.kind)) {
+            next.title = chargeTitleForKind(patch.kind);
           }
         }
         return next;
       }),
     }));
+  }
+
+  function toggleWorkerCollapsed(key: string) {
+    setCollapsedWorkers((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   async function onSave(e: React.FormEvent) {
@@ -624,7 +651,38 @@ export function JobForm({
               </div>
             </div>
 
-            {form.assignments.map((row, index) => (
+            {form.assignments.map((row, index) => {
+              const workerName =
+                workers?.find((w) => w._id === row.workerId)?.displayName ?? "";
+              const canCollapse = Boolean(row.workerId && workerName);
+              const isCollapsed =
+                canCollapse && collapsedWorkers.has(row.key);
+
+              if (isCollapsed) {
+                return (
+                  <button
+                    key={row.key}
+                    type="button"
+                    onClick={() => toggleWorkerCollapsed(row.key)}
+                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-start text-sm hover:bg-zinc-100"
+                  >
+                    <span className="min-w-0 truncate font-medium">
+                      {workerName}
+                      <span className="font-normal text-muted">
+                        {" "}
+                        · {row.startTime}–{row.endTime} ·{" "}
+                        {t(`entries.shiftTypes.${row.shiftType}`)}
+                        {row.travelHours
+                          ? ` · ${t("entries.travelHours")}: ${row.travelHours}`
+                          : ""}
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted" />
+                  </button>
+                );
+              }
+
+              return (
               <div
                 key={row.key}
                 className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"
@@ -633,6 +691,19 @@ export function JobForm({
                   <p className="text-xs font-semibold text-muted">
                     {t("entries.worker")} {index + 1}
                   </p>
+                  <div className="flex items-center gap-1">
+                    {canCollapse && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-muted"
+                        onClick={() => toggleWorkerCollapsed(row.key)}
+                        title={t("jobs.collapseWorker")}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                    )}
                   <Button
                     type="button"
                     size="sm"
@@ -650,6 +721,7 @@ export function JobForm({
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  </div>
                 </div>
 
                 <div>
@@ -729,7 +801,8 @@ export function JobForm({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <p className="text-xs text-muted">
               {t("calendar.spanHint")}: {span.startTime}–{span.endTime}
@@ -746,7 +819,10 @@ export function JobForm({
                 onClick={() =>
                   setForm((f) => ({
                     ...f,
-                    draftCharges: [...f.draftCharges, emptyCharge("parking")],
+                    draftCharges: [
+                      ...f.draftCharges,
+                      emptyCharge("parking", t("expenses.parking")),
+                    ],
                   }))
                 }
               >

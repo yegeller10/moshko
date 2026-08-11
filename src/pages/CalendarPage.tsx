@@ -245,7 +245,8 @@ export function CalendarPage() {
     const dateKey = raw?.date ?? arg.event.startStr.slice(0, 10);
     const dayCount = jobCountByDate.get(dateKey) ?? 0;
     const condense = isMobile && dayCount > 3;
-    const clientLabel = condense ? truncate(fullClient, 8) : fullClient || "—";
+    const slideText = `${fullClient || "—"} ×${workerCount}`;
+    const shortText = truncate(slideText, 12);
 
     return (
       <div
@@ -255,14 +256,18 @@ export function CalendarPage() {
         )}
       >
         <span className={statusDotClass(status)} aria-hidden />
-        {condense ? (
-          <span className="moshko-event-client-short">{clientLabel}</span>
-        ) : (
-          <span className="moshko-event-marquee">
-            <span className="moshko-event-marquee-text">{clientLabel}</span>
+        <span className="moshko-event-marquee">
+          <span className="moshko-event-marquee-track">
+            <span className="moshko-event-marquee-text">
+              {condense ? shortText : slideText}
+            </span>
+            {!condense && (
+              <span className="moshko-event-marquee-text" aria-hidden>
+                {slideText}
+              </span>
+            )}
           </span>
-        )}
-        <span className="moshko-event-workers">×{workerCount}</span>
+        </span>
       </div>
     );
   }
