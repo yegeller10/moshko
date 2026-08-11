@@ -7,12 +7,10 @@ import { PDFDocument, PDFFont, PDFPage, rgb, degrees } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { createHash } from "crypto";
 import { applyTemplate } from "./lib/offerDefaults";
+import { NOTO_SANS_HEBREW_REGULAR_BASE64 } from "./lib/hebrewFontBase64";
+import { NOTO_SANS_REGULAR_BASE64 } from "./lib/latinFontBase64";
 
-/** pdf-lib draws LTR; reverse Hebrew runs for visual RTL. */
-function prepareText(text: string): string {
-  if (!/[\u0590-\u05FF]/.test(text)) return text;
-  return [...text].reverse().join("");
-}
+type FontPair = { heb: PDFFont; lat: PDFFont };
 
 function randomToken() {
   const bytes = new Uint8Array(32);
@@ -20,12 +18,15 @@ function randomToken() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Shekel + ASCII digits (Latin font). */
 function money(n: number) {
-  return new Intl.NumberFormat("he-IL", {
-    style: "currency",
-    currency: "ILS",
-    maximumFractionDigits: 2,
-  }).format(n);
+  return (
+    "₪" +
+    n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
 }
 
 function formatIssuedAt(ts: number) {
@@ -34,62 +35,106 @@ function formatIssuedAt(ts: number) {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-async function loadHebrewFont(pdf: PDFDocument) {
-  pdf.registerFontkit(fontkit);
-  const urls = [
-    "https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Regular.ttf",
-    "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Regular.ttf",
-  ];
-  let lastErr: unknown;
-  for (const url of urls) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const bytes = await res.arrayBuffer();
-      return await pdf.embedFont(bytes);
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-  throw new ConvexError(
-    `Could not load Hebrew font: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
-  );
+function isHebrewChar(ch: string) {
+  const code = ch.codePointAt(0) ?? 0;
+  return code >= 0x0590 && code <= 0x05ff;
 }
 
-/** Draw RTL text by measuring width and placing from the right edge. */
+/** Split into Hebrew vs Latin/digit/punct runs for dual-font drawing. */
+function splitRuns(text: string): Array<{ text: string; heb: boolean }> {
+  const runs: Array<{ text: string; heb: boolean }> = [];
+  let cur = "";
+  let heb: boolean | null = null;
+  for (const ch of text) {
+    if (ch === " " && heb !== null) {
+      cur += ch;
+      continue;
+    }
+    const nextHeb = isHebrewChar(ch);
+    if (heb === null) {
+      heb = nextHeb;
+      cur = ch;
+      continue;
+    }
+    if (nextHeb === heb) {
+      cur += ch;
+    } else {
+      runs.push({ text: cur, heb });
+      cur = ch;
+      heb = nextHeb;
+    }
+  }
+  if (cur && heb !== null) runs.push({ text: cur, heb });
+
+  // Move trailing spaces from a Hebrew run onto the following Latin run
+  // so RTL painting keeps a visible gap (e.g. "הצעת מחיר 308").
+  for (let i = 0; i < runs.length - 1; i++) {
+    const run = runs[i]!;
+    const next = runs[i + 1]!;
+    const m = run.text.match(/^(.*?)(\s+)$/);
+    if (m && run.heb && !next.heb) {
+      run.text = m[1]!;
+      next.text = m[2]! + next.text;
+    }
+  }
+
+  return runs.length ? runs : [{ text: "", heb: false }];
+}
+
+function widthOf(fonts: FontPair, text: string, size: number) {
+  let w = 0;
+  for (const run of splitRuns(text)) {
+    const font = run.heb ? fonts.heb : fonts.lat;
+    w += font.widthOfTextAtSize(run.text, size);
+  }
+  return w;
+}
+
+async function loadFonts(pdf: PDFDocument): Promise<FontPair> {
+  pdf.registerFontkit(fontkit);
+  const heb = await pdf.embedFont(
+    Buffer.from(NOTO_SANS_HEBREW_REGULAR_BASE64, "base64"),
+  );
+  const lat = await pdf.embedFont(
+    Buffer.from(NOTO_SANS_REGULAR_BASE64, "base64"),
+  );
+  return { heb, lat };
+}
+
+/**
+ * Draw mixed Hebrew/Latin right-aligned.
+ * Do NOT reverse Hebrew — NotoSansHebrew glyphs are drawn in logical order.
+ */
 function drawRtl(
   page: PDFPage,
-  font: PDFFont,
+  fonts: FontPair,
   text: string,
   rightX: number,
   y: number,
   size: number,
   color = rgb(0.05, 0.05, 0.05),
 ) {
-  const shaped = prepareText(text);
-  const width = font.widthOfTextAtSize(shaped, size);
-  page.drawText(shaped, {
-    x: rightX - width,
-    y,
-    size,
-    font,
-    color,
-  });
-  return width;
+  const runs = splitRuns(text);
+  let x = rightX;
+  // Paint from the right: rightmost run first.
+  for (const run of [...runs].reverse()) {
+    const font = run.heb ? fonts.heb : fonts.lat;
+    const w = font.widthOfTextAtSize(run.text, size);
+    x -= w;
+    if (run.text.length) {
+      page.drawText(run.text, { x, y, size, font, color });
+    }
+  }
+  return rightX - x;
 }
 
-function wrapRtl(
-  font: PDFFont,
-  text: string,
-  maxWidth: number,
-  size: number,
-): string[] {
+function wrapRtl(fonts: FontPair, text: string, maxWidth: number, size: number) {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let cur = "";
   for (const w of words) {
     const next = cur ? `${cur} ${w}` : w;
-    if (font.widthOfTextAtSize(prepareText(next), size) <= maxWidth) {
+    if (widthOf(fonts, next, size) <= maxWidth) {
       cur = next;
     } else {
       if (cur) lines.push(cur);
@@ -181,7 +226,7 @@ export const sendOffer = action({
       "הצעת מחיר {{offerNumber}} — {{clientName}}";
     const bodyTpl =
       settings?.emailBodyTemplate ??
-      "<p>הצעת מחיר {{offerNumber}}</p><p><a href=\"{{acceptUrl}}\">אישור</a> · <a href=\"{{disputeUrl}}\">ערעור</a></p>";
+      '<p>הצעת מחיר {{offerNumber}}</p><p><a href="{{acceptUrl}}">אישור</a> · <a href="{{disputeUrl}}">ערעור</a></p>';
 
     const vars = {
       offerNumber: String(offer.number),
@@ -290,7 +335,7 @@ async function buildOfferPdf(args: {
 }): Promise<Uint8Array> {
   const { offer } = args;
   const pdf = await PDFDocument.create();
-  const font = await loadHebrewFont(pdf);
+  const fonts = await loadFonts(pdf);
   const page = pdf.addPage([595.28, 841.89]); // A4
   const { width, height } = page.getSize();
   const margin = 40;
@@ -299,41 +344,47 @@ async function buildOfferPdf(args: {
   let y = height - margin;
 
   const co = offer.companySnapshot;
-  drawRtl(page, font, co.name, right, y, 14);
+  drawRtl(page, fonts, co.name, right, y, 14);
   y -= 16;
-  drawRtl(page, font, `עוסק מורשה ${co.vatId}`, right, y, 10);
+  drawRtl(page, fonts, `עוסק מורשה ${co.vatId}`, right, y, 10);
   y -= 14;
-  drawRtl(page, font, co.address, right, y, 10);
+  drawRtl(page, fonts, co.address, right, y, 10);
   y -= 14;
   if (co.emails) {
-    drawRtl(page, font, co.emails, right, y, 9, rgb(0.3, 0.3, 0.3));
+    drawRtl(page, fonts, co.emails, right, y, 9, rgb(0.3, 0.3, 0.3));
     y -= 14;
   }
 
-  // Client block (left side of header area) — RTL so "לכבוד" near left-of-right content
   let cy = height - margin;
-  drawRtl(page, font, formatIssuedAt(args.issuedAt).split(" ")[0]!, left + 160, cy, 10);
+  drawRtl(
+    page,
+    fonts,
+    formatIssuedAt(args.issuedAt).split(" ")[0]!,
+    left + 160,
+    cy,
+    10,
+  );
   cy -= 14;
-  drawRtl(page, font, "לכבוד:", left + 160, cy, 10);
+  drawRtl(page, fonts, "לכבוד:", left + 160, cy, 10);
   cy -= 14;
-  const clientLines = wrapRtl(font, args.clientName, 200, 11);
+  const clientLines = wrapRtl(fonts, args.clientName, 200, 11);
   for (const line of clientLines) {
-    drawRtl(page, font, line, left + 200, cy, 11);
+    drawRtl(page, fonts, line, left + 200, cy, 11);
     cy -= 14;
   }
   if (args.clientEmails) {
-    const emLines = wrapRtl(font, args.clientEmails, 200, 9);
+    const emLines = wrapRtl(fonts, args.clientEmails, 200, 9);
     for (const line of emLines) {
-      drawRtl(page, font, line, left + 200, cy, 9, rgb(0.35, 0.35, 0.35));
+      drawRtl(page, fonts, line, left + 200, cy, 9, rgb(0.35, 0.35, 0.35));
       cy -= 12;
     }
   }
 
   y = Math.min(y, cy) - 20;
-  drawRtl(page, font, `הצעת מחיר ${offer.number}`, right, y, 16);
+  drawRtl(page, fonts, `הצעת מחיר ${offer.number}`, right, y, 16);
   drawRtl(
     page,
-    font,
+    fonts,
     "העתק נאמן למקור",
     left + 120,
     y,
@@ -341,18 +392,17 @@ async function buildOfferPdf(args: {
     rgb(0.1, 0.4, 0.2),
   );
   y -= 22;
-  drawRtl(page, font, offer.title, right, y, 13);
+  drawRtl(page, fonts, offer.title, right, y, 13);
   y -= 28;
 
-  // Table header
   const colQty = right;
   const colDesc = right - 50;
   const colUnit = left + 160;
   const colTotal = left + 70;
-  drawRtl(page, font, "כמות", colQty, y, 9, rgb(0.4, 0.4, 0.4));
-  drawRtl(page, font, "פירוט", colDesc, y, 9, rgb(0.4, 0.4, 0.4));
-  drawRtl(page, font, "מחיר", colUnit, y, 9, rgb(0.4, 0.4, 0.4));
-  drawRtl(page, font, "סה״כ", colTotal, y, 9, rgb(0.4, 0.4, 0.4));
+  drawRtl(page, fonts, "כמות", colQty, y, 9, rgb(0.4, 0.4, 0.4));
+  drawRtl(page, fonts, "פירוט", colDesc, y, 9, rgb(0.4, 0.4, 0.4));
+  drawRtl(page, fonts, "מחיר", colUnit, y, 9, rgb(0.4, 0.4, 0.4));
+  drawRtl(page, fonts, "סה״כ", colTotal, y, 9, rgb(0.4, 0.4, 0.4));
   y -= 8;
   page.drawLine({
     start: { x: left, y },
@@ -363,19 +413,16 @@ async function buildOfferPdf(args: {
   y -= 14;
 
   for (const item of offer.lineItems) {
-    const descLines = wrapRtl(font, item.description, 280, 9);
+    const descLines = wrapRtl(fonts, item.description, 280, 9);
     const rowHeight = Math.max(14, descLines.length * 12);
-    if (y - rowHeight < 140) {
-      // simple single-page for v1; shrink remaining
-    }
-    drawRtl(page, font, String(item.quantity), colQty, y, 10);
+    drawRtl(page, fonts, String(item.quantity), colQty, y, 10);
     let dy = y;
     for (const line of descLines) {
-      drawRtl(page, font, line, colDesc, dy, 9);
+      drawRtl(page, fonts, line, colDesc, dy, 9);
       dy -= 12;
     }
-    drawRtl(page, font, money(item.unitPrice), colUnit, y, 9);
-    drawRtl(page, font, money(item.total), colTotal, y, 9);
+    drawRtl(page, fonts, money(item.unitPrice), colUnit, y, 9);
+    drawRtl(page, fonts, money(item.total), colTotal, y, 9);
     y -= rowHeight + 4;
   }
 
@@ -387,23 +434,23 @@ async function buildOfferPdf(args: {
     color: rgb(0.75, 0.75, 0.75),
   });
   y -= 18;
-  drawRtl(page, font, "סה״כ", right, y, 11);
-  drawRtl(page, font, money(offer.subtotal), colTotal, y, 11);
+  drawRtl(page, fonts, "סה״כ", right, y, 11);
+  drawRtl(page, fonts, money(offer.subtotal), colTotal, y, 11);
   y -= 16;
   drawRtl(
     page,
-    font,
+    fonts,
     `מע״מ ${Math.round(offer.vatRate * 100)}%`,
     right,
     y,
     11,
   );
-  drawRtl(page, font, money(offer.vatAmount), colTotal, y, 11);
+  drawRtl(page, fonts, money(offer.vatAmount), colTotal, y, 11);
   y -= 18;
-  drawRtl(page, font, "סה״כ לתשלום", right, y, 13, rgb(0.04, 0.43, 0.76));
+  drawRtl(page, fonts, "סה״כ לתשלום", right, y, 13, rgb(0.04, 0.43, 0.76));
   drawRtl(
     page,
-    font,
+    fonts,
     money(offer.grandTotal),
     colTotal,
     y,
@@ -413,33 +460,31 @@ async function buildOfferPdf(args: {
 
   if (offer.attention) {
     y -= 24;
-    drawRtl(page, font, `לידי ${offer.attention}`, right, y, 11);
+    drawRtl(page, fonts, `לידי ${offer.attention}`, right, y, 11);
   }
 
   y -= 30;
   const bank = offer.bankSnapshot;
   for (const line of bank.paymentTerms.split("\n")) {
-    drawRtl(page, font, line, right, y, 10);
+    drawRtl(page, fonts, line, right, y, 10);
     y -= 13;
   }
-  drawRtl(page, font, bank.payee, right, y, 10);
+  drawRtl(page, fonts, bank.payee, right, y, 10);
   y -= 13;
-  drawRtl(page, font, bank.bank, right, y, 10);
+  drawRtl(page, fonts, bank.bank, right, y, 10);
   y -= 13;
-  drawRtl(page, font, bank.branch, right, y, 10);
+  drawRtl(page, fonts, bank.branch, right, y, 10);
   y -= 13;
-  drawRtl(page, font, `${bank.account} ח.מ`, right, y, 10);
+  drawRtl(page, fonts, `${bank.account} ח.מ`, right, y, 10);
 
-  // Footer
   const footer = `הופק ב ${formatIssuedAt(args.issuedAt)} | הצעת מחיר ${offer.number} | עמוד 1 מתוך 1`;
-  drawRtl(page, font, footer, right, 28, 8, rgb(0.45, 0.45, 0.45));
+  drawRtl(page, fonts, footer, right, 28, 8, rgb(0.45, 0.45, 0.45));
 
-  // Faithful-copy watermark-ish rotation small
-  page.drawText(prepareText("העתק נאמן למקור"), {
-    x: width / 2 - 40,
+  page.drawText("העתק נאמן למקור", {
+    x: width / 2 - 80,
     y: height / 2,
     size: 28,
-    font,
+    font: fonts.heb,
     color: rgb(0.85, 0.9, 0.85),
     rotate: degrees(35),
     opacity: 0.35,
