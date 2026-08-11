@@ -247,6 +247,7 @@ export function CalendarPage() {
     const condense = isMobile && dayCount > 3;
     const slideText = `${fullClient || "—"} ×${workerCount}`;
     const shortText = truncate(slideText, 12);
+    const useMarquee = isMobile && !condense;
 
     return (
       <div
@@ -256,18 +257,25 @@ export function CalendarPage() {
         )}
       >
         <span className={statusDotClass(status)} aria-hidden />
-        <span className="moshko-event-marquee">
-          <span className="moshko-event-marquee-track">
-            <span className="moshko-event-marquee-text">
-              {condense ? shortText : slideText}
-            </span>
-            {!condense && (
+        {useMarquee ? (
+          <span className="moshko-event-marquee moshko-event-marquee--slide">
+            <span className="moshko-event-marquee-track">
+              <span className="moshko-event-marquee-text">{slideText}</span>
               <span className="moshko-event-marquee-text" aria-hidden>
                 {slideText}
               </span>
+            </span>
+          </span>
+        ) : (
+          <span className="moshko-event-static">
+            <span className="moshko-event-client-short">
+              {condense ? shortText : fullClient || "—"}
+            </span>
+            {!condense && (
+              <span className="moshko-event-workers">×{workerCount}</span>
             )}
           </span>
-        </span>
+        )}
       </div>
     );
   }

@@ -626,7 +626,7 @@ export function JobForm({
             )}
           </div>
 
-          <div className="sm:col-span-2 space-y-3 rounded-xl border border-border p-3 sm:p-4">
+          <div className="sm:col-span-2 min-w-0 space-y-3 overflow-hidden rounded-xl border border-border p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="mb-0 text-base">{t("calendar.workers")}</Label>
               <div className="flex flex-wrap items-center gap-2">
@@ -671,20 +671,22 @@ export function JobForm({
                     key={row.key}
                     type="button"
                     onClick={() => toggleWorkerCollapsed(row.key)}
-                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-start text-sm hover:bg-zinc-100"
+                    className="flex w-full max-w-full items-start gap-2 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-start hover:bg-zinc-100"
                   >
-                    <span className="min-w-0 truncate font-medium">
-                      {workerName}
-                      <span className="font-normal text-muted">
-                        {" "}
-                        · {row.startTime}–{row.endTime} ·{" "}
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {workerName}
+                      </p>
+                      <p className="mt-0.5 break-words text-xs leading-snug text-muted">
+                        {row.startTime}–{row.endTime}
+                        {" · "}
                         {t(`entries.shiftTypes.${row.shiftType}`)}
                         {row.travelHours
                           ? ` · ${t("entries.travelHours")}: ${row.travelHours}`
                           : ""}
-                      </span>
-                    </span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted" />
+                      </p>
+                    </div>
+                    <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
                   </button>
                 );
               }

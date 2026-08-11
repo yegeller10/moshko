@@ -192,10 +192,22 @@
   text-overflow: ellipsis;
 }
 
+.moshko-calendar .moshko-event-static {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 0.3rem;
+  overflow: hidden;
+}
+
 .moshko-calendar .moshko-event-marquee {
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
+}
+
+.moshko-calendar .moshko-event-marquee--slide {
   mask-image: linear-gradient(
     to left,
     transparent 0,
@@ -210,13 +222,10 @@
   align-items: center;
   gap: 1.5rem;
   width: max-content;
-  animation: moshko-marquee 9s linear infinite;
 }
 
-.moshko-calendar .moshko-event-pill--condensed .moshko-event-marquee-track {
-  animation: none;
-  width: auto;
-  max-width: 100%;
+.moshko-calendar .moshko-event-marquee--slide .moshko-event-marquee-track {
+  animation: moshko-marquee 9s linear infinite;
 }
 
 .moshko-calendar .moshko-event-marquee-text {
@@ -235,7 +244,7 @@
   }
 }
 
-html[dir="rtl"] .moshko-calendar .moshko-event-marquee-track {
+html[dir="rtl"] .moshko-calendar .moshko-event-marquee--slide .moshko-event-marquee-track {
   animation-name: moshko-marquee-rtl;
 }
 
@@ -249,7 +258,7 @@ html[dir="rtl"] .moshko-calendar .moshko-event-marquee-track {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .moshko-calendar .moshko-event-marquee-track {
+  .moshko-calendar .moshko-event-marquee--slide .moshko-event-marquee-track {
     animation: none !important;
   }
 }
