@@ -219,13 +219,20 @@ export function JobForm({
       includeCar: liveJob.includeCar,
       locationText: liveJob.locationText ?? "",
       assignments: assigns.length ? assigns : [emptyAssignment()],
-      draftCharges: (liveJob.draftCharges ?? []).map((c) => ({
-        key: newKey(),
-        title: c.title,
-        amount: String(c.amount),
-        note: c.note ?? "",
-        kind: c.kind,
-      })),
+      draftCharges: (liveJob.draftCharges ?? []).map((c) => {
+        const kind = c.kind;
+        const rawTitle = c.title;
+        const title = isDefaultChargeTitle(rawTitle, kind)
+          ? chargeTitleForKind(kind)
+          : rawTitle;
+        return {
+          key: newKey(),
+          title,
+          amount: String(c.amount),
+          note: c.note ?? "",
+          kind,
+        };
+      }),
     });
     setHydratedId(jobId);
     setError(null);
