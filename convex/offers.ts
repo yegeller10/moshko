@@ -466,7 +466,7 @@ export const markIssued = internalMutation({
     id: v.id("offers"),
     contentHash: v.string(),
     pdfStorageId: v.id("_storage"),
-    sentToEmail: v.string(),
+    sentToEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const offer = await ctx.db.get(args.id);
@@ -476,30 +476,15 @@ export const markIssued = internalMutation({
       status:
         offer.status === "accepted" || offer.status === "disputed"
           ? offer.status
-          : "sent",
+          : args.sentToEmail
+            ? "sent"
+            : offer.status,
       contentHash: args.contentHash,
       pdfStorageId: args.pdfStorageId,
-      sentToEmail: args.sentToEmail,
-      issuedAt: offer.issuedAt ?? now,
+      ...(args.sentToEmail
+        ? { sentToEmail: args.sentToEmail, issuedAt: offer.issuedAt ?? now }
+        : {}),
       updatedAt: now,
-    });
-  },
-});
-
-/** Store a freshly built PDF without sending email. */
-export const savePdf = internalMutation({
-  args: {
-    id: v.id("offers"),
-    contentHash: v.string(),
-    pdfStorageId: v.id("_storage"),
-  },
-  handler: async (ctx, args) => {
-    const offer = await ctx.db.get(args.id);
-    if (!offer) throw new ConvexError("Offer not found");
-    await ctx.db.patch(args.id, {
-      contentHash: args.contentHash,
-      pdfStorageId: args.pdfStorageId,
-      updatedAt: Date.now(),
     });
   },
 });

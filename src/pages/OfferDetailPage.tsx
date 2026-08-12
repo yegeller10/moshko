@@ -20,7 +20,7 @@ export function OfferDetailPage() {
     offerId ? { id: offerId } : "skip",
   );
   const sendOffer = useAction(api.offerPdf.sendOffer);
-  const regenerateOfferPdf = useAction(api.offerPdf.regenerateOfferPdf);
+  const regenerateOfferPdf = useAction(api.offerRegen.rebuild);
   const [toEmail, setToEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
