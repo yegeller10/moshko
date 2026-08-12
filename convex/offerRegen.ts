@@ -12,6 +12,8 @@ export const rebuild = action({
     ok: true;
     contentHash: string;
     pdfUrl: string | null;
+    pdfBase64: string;
+    filename: string;
   }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthenticated");
@@ -63,6 +65,12 @@ export const rebuild = action({
       id: args.offerId,
     })) as { pdfUrl: string | null } | null;
 
-    return { ok: true as const, contentHash, pdfUrl: fresh?.pdfUrl ?? null };
+    return {
+      ok: true as const,
+      contentHash,
+      pdfUrl: fresh?.pdfUrl ?? null,
+      pdfBase64: Buffer.from(pdfBytes).toString("base64"),
+      filename: `offer-${offer.number}.pdf`,
+    };
   },
 });

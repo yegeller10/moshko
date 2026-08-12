@@ -49,11 +49,22 @@ export function OfferDetailPage() {
     setMessage(null);
     try {
       const result = await regenerateOfferPdf({ offerId: offerId! });
-      if (!result.pdfUrl) {
+      if (!result.pdfBase64) {
         setError(t("common.error"));
         return;
       }
-      window.open(result.pdfUrl, "_blank", "noopener,noreferrer");
+      const binary = atob(result.pdfBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename || `offer-${offer.number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
       setMessage(t("offers.pdfReady"));
     } catch (e) {
       console.error(e);

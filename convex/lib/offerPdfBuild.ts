@@ -7,7 +7,7 @@ import { HEEBO_BOLD_BASE64 } from "./heeboBoldBase64";
 import { LOGO_PNG_BASE64 } from "./logoPngBase64";
 import { RESVG_WASM_BASE64 } from "./resvgWasmBase64";
 
-const BRAND = "#5b8db8"; // matches sample 308 blue
+const BRAND = "#5d92e4"; // sample 308-heEditable blue
 const INK = "#111111";
 const MUTED = "#5a5a5a";
 const LINE = "#c8c8c8";
@@ -277,7 +277,7 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           style: {
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
+            alignItems: "flex-end",
             maxWidth: 210,
             direction: "ltr",
           },
@@ -293,19 +293,19 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
         he(t(co.name), {
           fontSize: 15,
           fontWeight: 700,
-          textAlign: "center",
+          textAlign: "right",
           marginBottom: 4,
         }),
         he(t(`עוסק מורשה ${co.vatId}`), {
           fontSize: 11,
           color: MUTED,
-          textAlign: "center",
+          textAlign: "right",
           lineHeight: 1.45,
         }),
         he(t(co.address), {
           fontSize: 11,
           color: MUTED,
-          textAlign: "center",
+          textAlign: "right",
           lineHeight: 1.45,
         }),
       ),
@@ -321,6 +321,7 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
             flexDirection: "column",
             gap: 4,
             direction: "ltr",
+            alignItems: "stretch",
           },
         },
         he(formatDateOnly(args.issuedAt), {
@@ -330,17 +331,19 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           display: "flex",
           justifyContent: "flex-end",
         }),
-        he(t("לכבוד:"), { fontSize: 13, marginTop: 6 }),
+        he(t("לכבוד:"), { fontSize: 13, marginTop: 6, textAlign: "right" }),
         he(t(args.clientName), {
           fontSize: 12,
           fontWeight: 700,
           lineHeight: 1.35,
+          textAlign: "right",
         }),
         args.clientEmails
           ? he(args.clientEmails, {
               fontSize: 11,
               opacity: 0.95,
               unicodeBidi: "normal",
+              textAlign: "right",
             })
           : null,
         el("div", {
@@ -396,6 +399,7 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
       },
       totalLine(t('סה"כ'), money(offer.subtotal)),
       totalLine(t(`מע"מ ${vatPct}%`), money(offer.vatAmount)),
+      // Sample 308: blue amount pill on LEFT, black label on RIGHT
       el(
         "div",
         {
@@ -404,30 +408,36 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
             flexDirection: "row",
             direction: "ltr",
             width: "100%",
-            background: BRAND,
-            color: "#ffffff",
             marginTop: 8,
-            padding: "10px 0",
             alignItems: "center",
-            fontWeight: 700,
-            fontSize: 15,
+            justifyContent: "space-between",
           },
         },
-        cell(118, money(offer.grandTotal), {
-          align: "left",
-          direction: "ltr",
-          override: false,
+        el(
+          "div",
+          {
+            style: {
+              background: BRAND,
+              color: "#ffffff",
+              padding: "8px 16px",
+              fontSize: 15,
+              fontWeight: 700,
+              textAlign: "left",
+              direction: "ltr",
+              unicodeBidi: "normal",
+            },
+          },
+          money(offer.grandTotal),
+        ),
+        he(t('סה"כ לתשלום'), {
+          fontSize: 15,
+          fontWeight: 700,
+          color: INK,
+          width: "auto",
+          textAlign: "right",
         }),
-        cell(100, "", { override: false }),
-        cell("flex", t('סה"כ לתשלום'), {
-          align: "right",
-          direction: "ltr",
-          padR: 10,
-        }),
-        cell(52, "", { override: false }),
       ),
-    ),
-    offer.attention
+    ),    offer.attention
       ? he(t(`לידי ${offer.attention}`), {
           marginTop: 20,
           fontSize: 14,
