@@ -302,7 +302,11 @@
     "disputePlaceholder": "מה לא מסתדר?",
     "submitDispute": "שליחת ערעור",
     "thanksAccepted": "תודה! האישור התקבל",
-    "thanksDisputed": "הערעור התקבל — ניצור קשר"
+    "thanksDisputed": "הערעור התקבל — ניצור קשר",
+    "offerApprovedTitle": "הצעת המחיר אושרה",
+    "acceptOffer": "אישור הצעת המחיר",
+    "approvedAt": "אושר ב-{{when}}",
+    "validUntil": "קישור תקף עד {{when}}"
   },
   "actuals": {
     "title": "הוספת רשומה",

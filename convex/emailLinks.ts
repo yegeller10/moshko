@@ -172,6 +172,7 @@ export const getByToken = query({
       open,
       toEmail: link.toEmail,
       expiresAt: link.expiresAt,
+      respondedAt: link.respondedAt,
       disputeNote: link.disputeNote,
     };
 

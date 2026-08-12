@@ -302,7 +302,11 @@
     "disputePlaceholder": "What needs changing?",
     "submitDispute": "Submit dispute",
     "thanksAccepted": "Thanks — confirmed",
-    "thanksDisputed": "Dispute received — we'll be in touch"
+    "thanksDisputed": "Dispute received — we'll be in touch",
+    "offerApprovedTitle": "This offer was approved",
+    "acceptOffer": "Approve offer",
+    "approvedAt": "Approved on {{when}}",
+    "validUntil": "Link valid until {{when}}"
   },
   "actuals": {
     "title": "Add entry",

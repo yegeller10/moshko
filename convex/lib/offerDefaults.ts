@@ -18,21 +18,23 @@ export const DEFAULT_OFFER_SETTINGS = {
   emailSubjectTemplate: "הצעת מחיר {{offerNumber}} — {{clientName}}",
   emailBodyTemplate: `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-<body style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;margin:0;padding:24px;color:#0a0a0a">
-  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e4e4e7;border-radius:16px;padding:24px">
-    <h1 style="margin:0 0 8px;font-size:22px;color:#0b6fc2">{{companyName}}</h1>
-    <p style="margin:0 0 16px;font-size:16px;font-weight:700">הצעת מחיר {{offerNumber}}</p>
-    <p style="margin:0 0 12px;line-height:1.5">שלום {{clientName}},</p>
-    <p style="margin:0 0 16px;line-height:1.5;color:#3f3f46">מצורפת הצעת מחיר. ניתן לאשר או לערער בקישורים למטה. קובץ PDF מצורף להודעה.</p>
-    <p style="margin:0 0 8px"><strong>{{title}}</strong></p>
-    <p style="margin:0 0 16px">סה״כ לתשלום כולל מע״מ: <strong>{{grandTotal}}</strong></p>
-    <div style="margin-top:24px;text-align:center">
-      <a href="{{acceptUrl}}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px;margin:4px">אישור</a>
-      <a href="{{disputeUrl}}" style="display:inline-block;background:#fff;color:#b91c1c;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px;margin:4px;border:1px solid #fecaca">ערעור</a>
+<body style="font-family:Arial,Helvetica,sans-serif;background:#f1f5f9;margin:0;padding:24px;color:#0a0a0a">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#0b6fc2,#085a9e);padding:24px 28px;color:#fff">
+      <img src="{{logoUrl}}" alt="" width="56" height="56" style="display:block;border-radius:12px;margin-bottom:12px" />
+      <p style="margin:0;font-size:13px;opacity:0.9">{{companyName}}</p>
+      <h1 style="margin:8px 0 0;font-size:22px">הצעת מחיר {{offerNumber}}</h1>
     </div>
-    <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa;text-align:center">
-      <a href="{{linkUrl}}" style="color:#0b6fc2">{{linkUrl}}</a>
-    </p>
+    <div style="padding:28px">
+      <p style="margin:0 0 12px">שלום {{clientName}},</p>
+      <p style="margin:0 0 20px;color:#52525b">מצורפת הצעת מחיר (PDF). לאישור לחצו למטה. הקישור תקף 21 יום.</p>
+      <p style="margin:0 0 8px"><strong>{{title}}</strong></p>
+      <p style="margin:0 0 24px;font-size:20px;color:#0b6fc2;direction:ltr;text-align:right"><strong>{{grandTotal}}</strong></p>
+      <div style="text-align:center">
+        <a href="{{acceptUrl}}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-weight:700;padding:14px 32px;border-radius:14px">אישור הצעת המחיר</a>
+      </div>
+      <p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;text-align:center"><a href="{{linkUrl}}" style="color:#0b6fc2">{{linkUrl}}</a></p>
+    </div>
   </div>
 </body>
 </html>`,
