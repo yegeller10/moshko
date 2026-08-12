@@ -60,7 +60,7 @@ export function OfferDetailPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = result.filename || `offer-${offer.number}.pdf`;
+      a.download = result.filename || `offer-${offer?.number ?? "pdf"}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
