@@ -158,6 +158,8 @@ export function OfferDetailPage() {
 
       {offer.status !== "cancelled" && (
         <Card className="space-y-3">
+          <p className="font-semibold">{t("offers.sendEmailTitle")}</p>
+          <p className="text-sm text-muted">{t("offers.sendEmailHint")}</p>
           <Label>{t("jobs.emailTo")}</Label>
           <Input
             type="email"
@@ -166,7 +168,7 @@ export function OfferDetailPage() {
             placeholder={emails[0] || ""}
           />
           <Button type="button" disabled={busy} onClick={() => void onResend()}>
-            {busy ? t("common.loading") : t("offers.resend")}
+            {busy ? t("common.loading") : t("offers.sendEmail")}
           </Button>
           {message && <p className="text-sm text-emerald-800">{message}</p>}
           {error && <p className="text-sm text-red-700">{error}</p>}

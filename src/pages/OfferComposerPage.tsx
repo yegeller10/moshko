@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatMoney } from "@/lib/costs";
 
@@ -33,7 +32,6 @@ export function OfferComposerPage() {
   const [selected, setSelected] = useState<Id<"calendarEvents">[]>([]);
   const [title, setTitle] = useState("");
   const [attention, setAttention] = useState("");
-  const [toEmail, setToEmail] = useState("");
   const [lines, setLines] = useState<LineItem[]>([]);
   const [linesReady, setLinesReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -62,11 +60,8 @@ export function OfferComposerPage() {
           t("offers.defaultTitle"),
       );
     }
-    if (!toEmail && preview.clientEmails[0]) {
-      setToEmail(preview.clientEmails[0]!);
-    }
     setLinesReady(true);
-  }, [preview, linesReady, title, toEmail, t]);
+  }, [preview, linesReady, title, t]);
 
   const selectedKey = selected.join(",");
 
@@ -75,7 +70,6 @@ export function OfferComposerPage() {
   }, [selectedKey]);
 
   const createDraft = useMutation(api.offers.createDraft);
-  const sendOffer = useAction(api.offerPdf.sendOffer);
   const ensureSettings = useMutation(api.offers.ensureSettings);
 
   useEffect(() => {
@@ -130,23 +124,17 @@ export function OfferComposerPage() {
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function onSend(e: React.FormEvent) {
+  async function onSave(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
       if (!selected.length) throw new Error(t("offers.needJobs"));
-      if (!toEmail.trim()) throw new Error(t("jobs.emailMissing"));
       const offerId = await createDraft({
         jobIds: selected,
         title: title.trim() || t("offers.defaultTitle"),
         attention: attention.trim() || undefined,
         lineItems: lines,
-      });
-      await sendOffer({
-        offerId,
-        toEmail: toEmail.trim(),
-        appOrigin: window.location.origin,
       });
       navigate(`/offers/${offerId}`);
     } catch (err) {
@@ -173,7 +161,7 @@ export function OfferComposerPage() {
   }
 
   return (
-    <form onSubmit={onSend} className="w-full max-w-3xl space-y-4">
+    <form onSubmit={onSave} className="w-full max-w-3xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold md:text-2xl">{t("offers.composerTitle")}</h2>
         <Button type="button" variant="secondary" asChild>
@@ -227,28 +215,6 @@ export function OfferComposerPage() {
             onChange={(e) => setAttention(e.target.value)}
             placeholder={t("offers.attentionPlaceholder")}
           />
-        </div>
-        <div>
-          <Label>{t("jobs.emailTo")}</Label>
-          {(preview?.clientEmails.length ?? 0) > 0 ? (
-            <Select
-              value={toEmail || preview!.clientEmails[0]}
-              onChange={(e) => setToEmail(e.target.value)}
-            >
-              {preview!.clientEmails.map((em) => (
-                <option key={em} value={em}>
-                  {em}
-                </option>
-              ))}
-            </Select>
-          ) : (
-            <Input
-              type="email"
-              value={toEmail}
-              onChange={(e) => setToEmail(e.target.value)}
-              required
-            />
-          )}
         </div>
       </Card>
 
@@ -328,7 +294,7 @@ export function OfferComposerPage() {
       {error && <p className="text-sm text-red-700">{error}</p>}
 
       <Button type="submit" disabled={busy || !lines.length}>
-        {busy ? t("common.loading") : t("offers.createAndSend")}
+        {busy ? t("common.loading") : t("offers.saveAndSend")}
       </Button>
     </form>
   );

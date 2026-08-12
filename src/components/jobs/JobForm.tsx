@@ -13,7 +13,6 @@ import {
   QuickAddClientDialog,
   QuickAddWorkerDialog,
 } from "@/components/calendar/QuickAddModals";
-import { SendJobEmailButtons } from "@/components/jobs/SendJobEmailButtons";
 import {
   assignmentSpan,
   computeJobQuoteFromAssignments,
@@ -520,22 +519,6 @@ export function JobForm({
                 </Button>
               )}
             </div>
-            {editing && jobId && (
-              <SendJobEmailButtons
-                jobId={jobId}
-                status={status}
-                clientEmails={[
-                  ...(clients?.find((c) => c._id === form.clientId)?.emails ??
-                    []),
-                  ...(clients?.find((c) => c._id === form.clientId)?.email
-                    ? [
-                        clients.find((c) => c._id === form.clientId)!
-                          .email as string,
-                      ]
-                    : []),
-                ]}
-              />
-            )}
           </Card>
         )}
 
