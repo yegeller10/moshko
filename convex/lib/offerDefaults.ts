@@ -11,7 +11,7 @@ export const DEFAULT_OFFER_SETTINGS = {
   bankName: "בנק דיסקונט",
   bankBranch: "סניף 75 קרית מוצקין",
   bankAccount: "4584610",
-  paymentTerms: "תשלום עד ל- 10 לחודש העוקב.\nבהעברה בנקאית לחשבון:",
+  paymentTerms: "תשלום עד ל-10 לחודש העוקב.\nבהעברה בנקאית לחשבון:",
   workerLineTemplate:
     "עובד תפעול לתאריך: {{date}} ל-{{hours}} שעות כולל שעות נוספות, שעות נסיעה ואש״ל.",
   carLineTemplate: "הוצאות רכב/נסיעות",

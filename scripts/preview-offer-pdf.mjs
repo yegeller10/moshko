@@ -3,9 +3,9 @@
  * Usage: npx tsx scripts/preview-offer-pdf.mjs
  */
 import fs from "fs";
-import { buildOfferPdfBytes } from "../convex/offerPdf.ts";
+import { buildOfferPdfBytes, buildOfferPngBytes } from "../convex/offerPdf.ts";
 
-const bytes = await buildOfferPdfBytes({
+const sample = {
   offer: {
     number: 308,
     title: "פסטיבל ראשון 2025",
@@ -54,14 +54,19 @@ const bytes = await buildOfferPdfBytes({
       bank: "בנק דיסקונט",
       branch: "סניף 75 קרית מוצקין",
       account: "4584610",
-      paymentTerms: "תשלום עד ל- 10 לחודש העוקב.\nבהעברה בנקאית לחשבון:",
+      paymentTerms: "תשלום עד ל-10 לחודש העוקב.\nבהעברה בנקאית לחשבון:",
     },
   },
-  clientName: "החברה העירונית ראשון לציון לתרבות, נופש וספורט בעמ",
+  clientName: 'החברה העירונית ראשון לציון לתרבות, נופש וספורט בע"מ',
   clientEmails: "Olaguy@gmail.com, mati@htrl.co.il",
   issuedAt: Date.parse("2025-09-25T14:13:00"),
-});
+};
+
+const bytes = await buildOfferPdfBytes(sample);
+const png = await buildOfferPngBytes(sample);
 
 fs.mkdirSync("assets/pdf-compare", { recursive: true });
-fs.writeFileSync("assets/pdf-compare/offer-fixed-preview.pdf", bytes);
-console.log("wrote", bytes.length);
+fs.writeFileSync("assets/pdf-compare/offer-fixed-preview.pdf", Buffer.from(bytes));
+fs.writeFileSync("assets/pdf-compare/offer-fixed-preview.png", Buffer.from(png));
+console.log("wrote assets/pdf-compare/offer-fixed-preview.pdf", bytes.length);
+console.log("wrote assets/pdf-compare/offer-fixed-preview.png", png.length);

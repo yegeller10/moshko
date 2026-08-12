@@ -23,6 +23,7 @@
     "@radix-ui/react-switch": "^1.2.5",
     "@resvg/resvg-wasm": "^2.6.2",
     "@workos-inc/authkit-react": "^0.11.0",
+    "bidi-js": "^1.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.25.2",

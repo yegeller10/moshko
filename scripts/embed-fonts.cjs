@@ -15,14 +15,14 @@ function writeBase64Module(ttfPath, outPath, exportName) {
 }
 
 writeBase64Module(
-  "convex/fonts/NotoSansHebrew-Regular.ttf",
-  "convex/lib/hebrewFontBase64.ts",
-  "NOTO_SANS_HEBREW_REGULAR_BASE64",
+  "convex/fonts/Heebo-Regular.ttf",
+  "convex/lib/heeboRegularBase64.ts",
+  "HEEBO_REGULAR_BASE64",
 );
 writeBase64Module(
-  "convex/fonts/NotoSans-Regular.ttf",
-  "convex/lib/latinFontBase64.ts",
-  "NOTO_SANS_REGULAR_BASE64",
+  "convex/fonts/Heebo-Bold.ttf",
+  "convex/lib/heeboBoldBase64.ts",
+  "HEEBO_BOLD_BASE64",
 );
 writeBase64Module(
   "public/logo.png",
