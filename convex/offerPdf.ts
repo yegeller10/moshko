@@ -3,23 +3,24 @@
 import { action } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api, internal } from "./_generated/api";
-import { PDFDocument, PDFFont, PDFPage, rgb, degrees } from "pdf-lib";
+import { PDFDocument, PDFFont, PDFPage, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { createHash } from "crypto";
 import { applyTemplate } from "./lib/offerDefaults";
 import { buildOfferEmailHtml } from "./lib/offerEmailHtml";
 import { NOTO_SANS_HEBREW_REGULAR_BASE64 } from "./lib/hebrewFontBase64";
 import { NOTO_SANS_REGULAR_BASE64 } from "./lib/latinFontBase64";
+import { LOGO_PNG_BASE64 } from "./lib/logoPngBase64";
 
 type FontPair = { heb: PDFFont; lat: PDFFont };
 
+/** Sample 308 brand blue */
 const BRAND = rgb(0.043, 0.435, 0.761);
-const BRAND_SOFT = rgb(0.91, 0.953, 0.984);
 const BRAND_DARK = rgb(0.031, 0.353, 0.62);
-const MUTED = rgb(0.45, 0.45, 0.45);
+const MUTED = rgb(0.42, 0.42, 0.42);
 const INK = rgb(0.05, 0.05, 0.05);
-const BORDER = rgb(0.82, 0.82, 0.82);
-const GREEN = rgb(0.1, 0.4, 0.2);
+const BORDER = rgb(0.78, 0.78, 0.78);
+const WHITE = rgb(1, 1, 1);
 
 function randomToken() {
   const bytes = new Uint8Array(32);
@@ -54,22 +55,27 @@ function isHebrewChar(ch: string) {
   return code >= 0x0590 && code <= 0x05ff;
 }
 
-function charScript(ch: string): "heb" | "lat" {
-  if (isHebrewChar(ch)) return "heb";
-  if (/[0-9A-Za-z@]/.test(ch)) return "lat";
-  return "heb";
+function isHebrewFontChar(ch: string) {
+  return isHebrewChar(ch);
+}
+
+function normalizeOfferText(text: string) {
+  return text
+    .replace(/["\u201C\u201D]/g, "\u05F4")
+    .replace(/['\u2018\u2019]/g, "\u05F3");
 }
 
 function splitRuns(text: string): Array<{ text: string; heb: boolean }> {
+  const normalized = normalizeOfferText(text);
   const runs: Array<{ text: string; heb: boolean }> = [];
   let cur = "";
   let heb: boolean | null = null;
-  for (const ch of text) {
+  for (const ch of normalized) {
     if (ch === " ") {
       cur += ch;
       continue;
     }
-    const nextHeb = charScript(ch) === "heb";
+    const nextHeb = isHebrewFontChar(ch);
     if (heb === null) {
       heb = nextHeb;
       cur = ch;
@@ -84,6 +90,18 @@ function splitRuns(text: string): Array<{ text: string; heb: boolean }> {
     }
   }
   if (cur && heb !== null) runs.push({ text: cur, heb });
+
+  // Prefer spaces before a Latin run so "לתאריך: 28" keeps space with the number.
+  for (let i = 0; i < runs.length - 1; i++) {
+    const run = runs[i]!;
+    const next = runs[i + 1]!;
+    const m = run.text.match(/^(.*?)(\s+)$/);
+    if (m && run.heb && !next.heb) {
+      run.text = m[1] ?? "";
+      next.text = `${m[2] ?? ""}${next.text}`;
+    }
+  }
+
   return runs.length ? runs : [{ text: "", heb: true }];
 }
 
@@ -107,6 +125,12 @@ async function loadFonts(pdf: PDFDocument): Promise<FontPair> {
   return { heb, lat };
 }
 
+/**
+ * RTL paragraph draw: first logical run sits on the right.
+ * Do NOT reverse Hebrew glyphs — PDF viewers apply bidi/shaping;
+ * reversing would double-flip letters into mirrored gibberish.
+ * Digits/punctuation use the Latin font (Hebrew font lacks those glyphs).
+ */
 function drawRtl(
   page: PDFPage,
   fonts: FontPair,
@@ -117,18 +141,14 @@ function drawRtl(
   color = INK,
 ) {
   const runs = splitRuns(text);
-  let totalW = 0;
+  let x = rightX;
   for (const run of runs) {
     const font = run.heb ? fonts.heb : fonts.lat;
-    totalW += font.widthOfTextAtSize(run.text, size);
-  }
-  let x = rightX - totalW;
-  for (const run of runs) {
-    const font = run.heb ? fonts.heb : fonts.lat;
+    const w = font.widthOfTextAtSize(run.text, size);
+    x -= w;
     if (run.text.length) {
       page.drawText(run.text, { x, y, size, font, color });
     }
-    x += font.widthOfTextAtSize(run.text, size);
   }
 }
 
@@ -166,17 +186,25 @@ function wrapRtl(
   return lines.length ? lines : [""];
 }
 
-async function tryEmbedLogo(pdf: PDFDocument, logoUrl: string) {
+async function embedLogo(pdf: PDFDocument, logoUrl: string) {
+  const fromBytes = async (bytes: Uint8Array) => {
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) return pdf.embedPng(bytes);
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) return pdf.embedJpg(bytes);
+    return null;
+  };
+
   try {
     const res = await fetch(logoUrl);
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") ?? "";
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    if (ct.includes("png")) return await pdf.embedPng(bytes);
-    if (ct.includes("jpeg") || ct.includes("jpg")) {
-      return await pdf.embedJpg(bytes);
+    if (res.ok) {
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const img = await fromBytes(bytes);
+      if (img) return img;
     }
-    return null;
+  } catch {
+    // fall through to embedded asset
+  }
+  try {
+    return await fromBytes(Buffer.from(LOGO_PNG_BASE64, "base64"));
   } catch {
     return null;
   }
@@ -370,7 +398,7 @@ async function buildOfferPdf(args: {
   const { offer } = args;
   const pdf = await PDFDocument.create();
   const fonts = await loadFonts(pdf);
-  const logo = await tryEmbedLogo(pdf, args.logoUrl);
+  const logo = await embedLogo(pdf, args.logoUrl);
   const page = pdf.addPage([595.28, 841.89]);
   const { width, height } = page.getSize();
   const margin = 36;
@@ -378,101 +406,127 @@ async function buildOfferPdf(args: {
   const left = margin;
   const co = offer.companySnapshot;
 
-  let headerTop = height - margin;
-  if (logo) {
-    const logoH = 44;
-    const logoW = (logo.width / logo.height) * logoH;
-    page.drawImage(logo, {
-      x: right - logoW,
-      y: headerTop - logoH,
-      width: logoW,
-      height: logoH,
-    });
-    headerTop -= logoH + 8;
-  }
-  drawRtl(page, fonts, co.name, right, headerTop, 14, BRAND_DARK);
-  headerTop -= 15;
-  drawRtl(page, fonts, `עוסק מורשה ${co.vatId}`, right, headerTop, 9, MUTED);
-  headerTop -= 13;
-  drawRtl(page, fonts, co.address, right, headerTop, 9, MUTED);
-  if (co.emails) {
-    headerTop -= 13;
-    drawRtl(page, fonts, co.emails, right, headerTop, 8, MUTED);
-  }
-
-  const boxW = 268;
-  const boxX = left;
+  // --- Header: logo + company (LEFT), solid blue client block (RIGHT) ---
+  const boxW = 300;
+  const boxX = right - boxW;
   const boxTop = height - margin;
   const boxPad = 14;
-  let boxContentH = boxPad + 12 + 14 + 14;
+
   const clientLines = wrapRtl(fonts, args.clientName, boxW - boxPad * 2, 10);
-  boxContentH += clientLines.length * 13;
-  if (args.clientEmails) {
-    const emLines = wrapRtl(fonts, args.clientEmails, boxW - boxPad * 2, 8);
-    boxContentH += emLines.length * 11 + 4;
-  }
-  boxContentH += 18 + 14 + 12;
-  const boxH = boxContentH + boxPad;
+  const emailLines = args.clientEmails
+    ? wrapRtl(fonts, args.clientEmails, boxW - boxPad * 2, 8)
+    : [];
+  const boxH =
+    boxPad +
+    14 + // date
+    16 + // לכבוד
+    clientLines.length * 13 +
+    (emailLines.length ? emailLines.length * 11 + 4 : 0) +
+    10 + // line gap
+    1 + // separator
+    12 +
+    18 + // title
+    14 + // copy line
+    boxPad;
+
   page.drawRectangle({
     x: boxX,
     y: boxTop - boxH,
     width: boxW,
     height: boxH,
-    color: BRAND_SOFT,
-    borderColor: BRAND,
-    borderWidth: 0.8,
+    color: BRAND,
   });
 
-  let by = boxTop - boxPad - 10;
-  drawLeft(
+  let by = boxTop - boxPad - 2;
+  drawRtl(
     page,
     fonts,
     formatDateOnly(args.issuedAt),
-    boxX + boxPad,
+    boxX + boxW - boxPad,
     by,
     10,
-    BRAND_DARK,
+    WHITE,
   );
   by -= 16;
-  drawRtl(page, fonts, "לכבוד:", boxX + boxW - boxPad, by, 10, INK);
+  drawRtl(page, fonts, "לכבוד:", boxX + boxW - boxPad, by, 10, WHITE);
   by -= 14;
   for (const line of clientLines) {
-    drawRtl(page, fonts, line, boxX + boxW - boxPad, by, 10, INK);
+    drawRtl(page, fonts, line, boxX + boxW - boxPad, by, 10, WHITE);
     by -= 13;
   }
-  if (args.clientEmails) {
+  if (emailLines.length) {
     by -= 2;
-    const emLines = wrapRtl(fonts, args.clientEmails, boxW - boxPad * 2, 8);
-    for (const line of emLines) {
-      drawRtl(page, fonts, line, boxX + boxW - boxPad, by, 8, MUTED);
+    for (const line of emailLines) {
+      drawRtl(page, fonts, line, boxX + boxW - boxPad, by, 8, WHITE);
       by -= 11;
     }
   }
   by -= 8;
+  page.drawLine({
+    start: { x: boxX + boxPad, y: by },
+    end: { x: boxX + boxW - boxPad, y: by },
+    thickness: 0.8,
+    color: WHITE,
+  });
+  by -= 16;
   drawRtl(
     page,
     fonts,
     `הצעת מחיר ${offer.number}`,
     boxX + boxW - boxPad,
     by,
-    14,
-    BRAND,
+    16,
+    WHITE,
   );
   by -= 16;
-  drawRtl(page, fonts, "העתק נאמן למקור", boxX + boxW - boxPad, by, 9, GREEN);
+  drawRtl(page, fonts, "העתק נאמן למקור", boxX + boxW - boxPad, by, 9, WHITE);
 
-  let y = Math.min(headerTop, boxTop - boxH) - 22;
+  // Left brand column
+  let headerTop = height - margin;
+  if (logo) {
+    const logoH = 72;
+    const logoW = (logo.width / logo.height) * logoH;
+    page.drawImage(logo, {
+      x: left,
+      y: headerTop - logoH,
+      width: Math.min(logoW, 150),
+      height: logoH * (Math.min(logoW, 150) / logoW),
+    });
+    headerTop -= logoH + 10;
+  } else {
+    drawRtl(page, fonts, co.name, left + 160, headerTop, 14, BRAND_DARK);
+    headerTop -= 18;
+  }
+  drawRtl(
+    page,
+    fonts,
+    `עוסק מורשה ${co.vatId}`,
+    left + 160,
+    headerTop,
+    9,
+    MUTED,
+  );
+  headerTop -= 12;
+  drawRtl(page, fonts, co.address, left + 160, headerTop, 9, MUTED);
+  if (co.emails) {
+    headerTop -= 12;
+    drawRtl(page, fonts, co.emails, left + 160, headerTop, 8, MUTED);
+  }
+
+  let y = Math.min(headerTop, boxTop - boxH) - 28;
   drawRtl(page, fonts, offer.title, right, y, 13, INK);
-  y -= 26;
+  y -= 24;
 
   const colQtyRight = right;
-  const colDescRight = right - 36;
-  const colPriceLeft = left + 118;
+  const colDescRight = right - 40;
+  const colPriceLeft = left + 110;
   const colTotalLeft = left;
+  const descMaxW = colDescRight - (colPriceLeft + 70);
+
   drawRtl(page, fonts, "כמות", colQtyRight, y, 8, MUTED);
   drawRtl(page, fonts, "פירוט", colDescRight, y, 8, MUTED);
-  drawLeft(page, fonts, "מחיר", colPriceLeft, y, 8, MUTED);
-  drawLeft(page, fonts, "סה״כ", colTotalLeft, y, 8, MUTED);
+  drawRtl(page, fonts, "מחיר", colPriceLeft + 48, y, 8, MUTED);
+  drawRtl(page, fonts, "סה״כ", colTotalLeft + 48, y, 8, MUTED);
   y -= 6;
   page.drawLine({
     start: { x: left, y },
@@ -483,7 +537,7 @@ async function buildOfferPdf(args: {
   y -= 14;
 
   for (const item of offer.lineItems) {
-    const descLines = wrapRtl(fonts, item.description, 300, 9);
+    const descLines = wrapRtl(fonts, item.description, descMaxW, 9);
     const rowHeight = Math.max(14, descLines.length * 12);
     drawRtl(page, fonts, String(item.quantity), colQtyRight, y, 10, INK);
     let dy = y;
@@ -496,7 +550,7 @@ async function buildOfferPdf(args: {
     y -= rowHeight + 5;
   }
 
-  y -= 8;
+  y -= 6;
   page.drawLine({
     start: { x: left, y },
     end: { x: right, y },
@@ -518,50 +572,68 @@ async function buildOfferPdf(args: {
     INK,
   );
   drawLeft(page, fonts, money(offer.vatAmount), colTotalLeft, y, 11, INK);
-  y -= 18;
+  y -= 20;
 
+  // Grand total: blue amount pill on the left (308 style), label on the right
+  const totalLabel = "סה״כ לתשלום";
+  const totalStr = money(offer.grandTotal);
+  const totalW = fonts.lat.widthOfTextAtSize(totalStr, 13) + 16;
+  const totalH = 22;
   page.drawRectangle({
     x: left,
-    y: y - 4,
-    width: right - left,
-    height: 22,
-    color: BRAND_SOFT,
+    y: y - 5,
+    width: totalW,
+    height: totalH,
+    color: BRAND,
   });
-  drawRtl(page, fonts, "סה״כ לתשלום", right, y, 13, BRAND);
-  drawLeft(page, fonts, money(offer.grandTotal), colTotalLeft, y, 13, BRAND);
+  drawLeft(page, fonts, totalStr, left + 8, y, 13, WHITE);
+  drawRtl(page, fonts, totalLabel, right, y, 13, INK);
   y -= 28;
 
   if (offer.attention) {
     drawRtl(page, fonts, `לידי ${offer.attention}`, right, y, 11, INK);
-    y -= 22;
+    y -= 20;
   }
 
-  y -= 8;
+  page.drawLine({
+    start: { x: left, y },
+    end: { x: right, y },
+    thickness: 0.5,
+    color: BORDER,
+  });
+  y -= 16;
+
   const bank = offer.bankSnapshot;
-  for (const line of bank.paymentTerms.split("\n")) {
-    drawRtl(page, fonts, line, right, y, 10, INK);
+  const termLines = bank.paymentTerms.split("\n").filter((l) => l.trim());
+  termLines.forEach((line, i) => {
+    const text =
+      i === 0 && !line.trimStart().startsWith("*") ? `* ${line}` : line;
+    drawRtl(page, fonts, text, right, y, 10, INK);
     y -= 13;
-  }
+  });
   drawRtl(page, fonts, bank.payee, right, y, 10, INK);
   y -= 13;
   drawRtl(page, fonts, bank.bank, right, y, 10, INK);
   y -= 13;
   drawRtl(page, fonts, bank.branch, right, y, 10, INK);
   y -= 13;
-  drawRtl(page, fonts, `${bank.account} ח.מ`, right, y, 10, INK);
+  drawRtl(page, fonts, `מ.ח ${bank.account}`, right, y, 10, INK);
 
-  const footer = `הופק ב ${formatIssuedAt(args.issuedAt)} | הצעת מחיר ${offer.number} | עמוד 1 מתוך 1`;
-  drawRtl(page, fonts, footer, right, 24, 7.5, MUTED);
-
-  page.drawText("העתק נאמן למקור", {
-    x: width / 2 - 90,
-    y: height / 2 - 10,
-    size: 32,
-    font: fonts.heb,
-    color: rgb(0.88, 0.93, 0.96),
-    rotate: degrees(35),
-    opacity: 0.45,
-  });
+  let footerX = right;
+  const footerParts = [
+    `עמוד 1 מתוך 1`,
+    `הצעת מחיר ${offer.number}`,
+    `הופק ב ${formatIssuedAt(args.issuedAt)}`,
+  ];
+  for (let i = 0; i < footerParts.length; i++) {
+    const part = footerParts[i]!;
+    drawRtl(page, fonts, part, footerX, 24, 7.5, MUTED);
+    footerX -= widthOf(fonts, part, 7.5);
+    if (i < footerParts.length - 1) {
+      drawRtl(page, fonts, " | ", footerX, 24, 7.5, MUTED);
+      footerX -= widthOf(fonts, " | ", 7.5);
+    }
+  }
 
   return await pdf.save();
 }

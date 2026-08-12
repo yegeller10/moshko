@@ -24,3 +24,8 @@ writeBase64Module(
   "convex/lib/latinFontBase64.ts",
   "NOTO_SANS_REGULAR_BASE64",
 );
+writeBase64Module(
+  "public/logo.png",
+  "convex/lib/logoPngBase64.ts",
+  "LOGO_PNG_BASE64",
+);
