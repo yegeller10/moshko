@@ -6,12 +6,15 @@ import { api, internal } from "./_generated/api";
 import { createHash } from "crypto";
 import { buildOfferPdfBytes } from "./lib/offerPdfBuild";
 
+/**
+ * Rebuild PDF for download only — does not persist to Convex storage.
+ * (Email send still stores a copy for the sent attachment.)
+ */
 export const rebuild = action({
   args: { offerId: v.id("offers") },
   handler: async (ctx, args): Promise<{
     ok: true;
     contentHash: string;
-    pdfUrl: string | null;
     pdfBase64: string;
     filename: string;
   }> => {
@@ -31,6 +34,17 @@ export const rebuild = action({
       throw new ConvexError("Offer cancelled");
     }
 
+    const issuedAt = Date.now();
+    const provisionalHash = createHash("sha256")
+      .update(
+        JSON.stringify({
+          id: args.offerId,
+          n: offer.number,
+          g: offer.grandTotal,
+          at: issuedAt,
+        }),
+      )
+      .digest("hex");
     const pdfBytes = await buildOfferPdfBytes({
       offer,
       clientName: client?.name ?? "—",
@@ -40,35 +54,15 @@ export const rebuild = action({
       ]
         .filter(Boolean)
         .join(", "),
-      issuedAt: Date.now(),
+      issuedAt,
+      contentHash: provisionalHash,
     });
 
     const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
-    const uploadUrl = await ctx.runMutation(api.offers.generateUploadUrl, {});
-    const uploadRes = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/pdf" },
-      body: pdfBytes,
-    });
-    if (!uploadRes.ok) throw new ConvexError("Failed to upload PDF");
-    const { storageId } = (await uploadRes.json()) as {
-      storageId: import("./_generated/dataModel").Id<"_storage">;
-    };
-
-    await ctx.runMutation(internal.offers.markIssued, {
-      id: args.offerId,
-      contentHash,
-      pdfStorageId: storageId,
-    });
-
-    const fresh = (await ctx.runQuery(api.offers.get, {
-      id: args.offerId,
-    })) as { pdfUrl: string | null } | null;
 
     return {
       ok: true as const,
       contentHash,
-      pdfUrl: fresh?.pdfUrl ?? null,
       pdfBase64: Buffer.from(pdfBytes).toString("base64"),
       filename: `offer-${offer.number}.pdf`,
     };

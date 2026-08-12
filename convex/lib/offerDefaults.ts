@@ -11,7 +11,8 @@ export const DEFAULT_OFFER_SETTINGS = {
   bankName: "בנק דיסקונט",
   bankBranch: "סניף 75 קרית מוצקין",
   bankAccount: "4584610",
-  paymentTerms: "תשלום עד ל-10 לחודש העוקב.\nבהעברה בנקאית לחשבון:",
+  paymentTerms:
+    "תשלום עד ל-10 לחודש העוקב.\nבהעברה בנקאית לחשבון:\nתומר מושקו\nבנק דיסקונט\nסניף 75 קרית מוצקין\nמ.ח 4584610",
   workerLineTemplate:
     "עובד תפעול לתאריך: {{date}} ל-{{hours}} שעות כולל שעות נוספות, שעות נסיעה ואש״ל.",
   carLineTemplate: "הוצאות רכב/נסיעות",
@@ -31,7 +32,7 @@ export const DEFAULT_OFFER_SETTINGS = {
       <p style="margin:0 0 8px"><strong>{{title}}</strong></p>
       <p style="margin:0 0 24px;font-size:20px;color:#0b6fc2;direction:ltr;text-align:right"><strong>{{grandTotal}}</strong></p>
       <div style="text-align:center">
-        <a href="{{acceptUrl}}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-weight:700;padding:14px 32px;border-radius:14px">אישור הצעת המחיר</a>
+        <a href="{{acceptUrl}}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-weight:700;padding:14px 32px;border-radius:14px">אישור הצעת מחיר</a>
       </div>
       <p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;text-align:center"><a href="{{linkUrl}}" style="color:#0b6fc2">{{linkUrl}}</a></p>
     </div>
@@ -39,6 +40,34 @@ export const DEFAULT_OFFER_SETTINGS = {
 </body>
 </html>`,
 } as const;
+
+/** Full bank/payment footer block for PDF (one settings textbox). */
+export function composeBankFooter(s: {
+  paymentTerms: string;
+  bankPayee: string;
+  bankName: string;
+  bankBranch: string;
+  bankAccount: string;
+}): string {
+  const terms = s.paymentTerms
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (terms.length >= 4) return terms.join("\n");
+  const extras = [
+    s.bankPayee,
+    s.bankName,
+    s.bankBranch,
+    s.bankAccount ? `מ.ח ${s.bankAccount}` : "",
+  ]
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const merged = [...terms];
+  for (const line of extras) {
+    if (!merged.includes(line)) merged.push(line);
+  }
+  return merged.join("\n");
+}
 
 export function applyTemplate(
   template: string,

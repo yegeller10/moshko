@@ -8,6 +8,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+function composeFooterFromSettings(s: {
+  paymentTerms: string;
+  bankPayee: string;
+  bankName: string;
+  bankBranch: string;
+  bankAccount: string;
+}) {
+  const terms = s.paymentTerms
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (terms.length >= 4) return terms.join("\n");
+  const extras = [
+    s.bankPayee,
+    s.bankName,
+    s.bankBranch,
+    s.bankAccount ? `מ.ח ${s.bankAccount}` : "",
+  ]
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const merged = [...terms];
+  for (const line of extras) {
+    if (!merged.includes(line)) merged.push(line);
+  }
+  return merged.join("\n");
+}
+
 export function OfferSettingsCard() {
   const { t } = useTranslation();
   const settings = useQuery(api.offers.getSettings, {});
@@ -16,17 +43,13 @@ export function OfferSettingsCard() {
   const resetTemplates = useMutation(api.offers.resetTemplates);
 
   const [form, setForm] = useState({
-    nextNumber: "",
     vatPercent: "",
+    nextNumber: "",
     companyName: "",
-    companyVatId: "",
     companyAddress: "",
+    companyVatId: "",
     companyEmails: "",
-    bankPayee: "",
-    bankName: "",
-    bankBranch: "",
-    bankAccount: "",
-    paymentTerms: "",
+    bankFooter: "",
     workerLineTemplate: "",
     carLineTemplate: "",
     emailSubjectTemplate: "",
@@ -41,17 +64,13 @@ export function OfferSettingsCard() {
   useEffect(() => {
     if (!settings) return;
     setForm({
-      nextNumber: String(settings.nextNumber),
       vatPercent: String(settings.vatPercent),
+      nextNumber: String(settings.nextNumber),
       companyName: settings.companyName,
-      companyVatId: settings.companyVatId,
       companyAddress: settings.companyAddress,
+      companyVatId: settings.companyVatId,
       companyEmails: settings.companyEmails,
-      bankPayee: settings.bankPayee,
-      bankName: settings.bankName,
-      bankBranch: settings.bankBranch,
-      bankAccount: settings.bankAccount,
-      paymentTerms: settings.paymentTerms,
+      bankFooter: composeFooterFromSettings(settings),
       workerLineTemplate: settings.workerLineTemplate,
       carLineTemplate: settings.carLineTemplate,
       emailSubjectTemplate: settings.emailSubjectTemplate,
@@ -67,18 +86,32 @@ export function OfferSettingsCard() {
     e.preventDefault();
     setMsg(null);
     try {
+      const lines = form.bankFooter
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      // Keep legacy bank fields populated for older snapshots
+      const payee = lines[2] ?? settings?.bankPayee ?? "";
+      const bankName = lines[3] ?? settings?.bankName ?? "";
+      const branch = lines[4] ?? settings?.bankBranch ?? "";
+      const accountLine = lines[5] ?? "";
+      const account =
+        accountLine.replace(/^מ\.?\s*ח\.?\s*/i, "").trim() ||
+        settings?.bankAccount ||
+        "";
+
       await updateSettings({
-        nextNumber: Number(form.nextNumber) || undefined,
         vatPercent: Number(form.vatPercent) || undefined,
+        nextNumber: Number(form.nextNumber) || undefined,
         companyName: form.companyName,
-        companyVatId: form.companyVatId,
         companyAddress: form.companyAddress,
+        companyVatId: form.companyVatId,
         companyEmails: form.companyEmails,
-        bankPayee: form.bankPayee,
-        bankName: form.bankName,
-        bankBranch: form.bankBranch,
-        bankAccount: form.bankAccount,
-        paymentTerms: form.paymentTerms,
+        paymentTerms: form.bankFooter,
+        bankPayee: payee,
+        bankName,
+        bankBranch: branch,
+        bankAccount: account,
         workerLineTemplate: form.workerLineTemplate,
         carLineTemplate: form.carLineTemplate,
         emailSubjectTemplate: form.emailSubjectTemplate,
@@ -113,15 +146,6 @@ export function OfferSettingsCard() {
       <p className="text-xs text-muted">{t("settings.offerPlaceholders")}</p>
       <form onSubmit={onSave} className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label>{t("settings.offerNextNumber")}</Label>
-          <Input
-            type="number"
-            min="1"
-            value={form.nextNumber}
-            onChange={(e) => setField("nextNumber", e.target.value)}
-          />
-        </div>
-        <div>
           <Label>{t("settings.offerVatPercent")}</Label>
           <Input
             type="number"
@@ -131,11 +155,27 @@ export function OfferSettingsCard() {
             onChange={(e) => setField("vatPercent", e.target.value)}
           />
         </div>
+        <div>
+          <Label>{t("settings.offerNextNumber")}</Label>
+          <Input
+            type="number"
+            min="1"
+            value={form.nextNumber}
+            onChange={(e) => setField("nextNumber", e.target.value)}
+          />
+        </div>
         <div className="sm:col-span-2">
           <Label>{t("settings.offerCompanyName")}</Label>
           <Input
             value={form.companyName}
             onChange={(e) => setField("companyName", e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>{t("settings.offerCompanyAddress")}</Label>
+          <Input
+            value={form.companyAddress}
+            onChange={(e) => setField("companyAddress", e.target.value)}
           />
         </div>
         <div>
@@ -153,46 +193,15 @@ export function OfferSettingsCard() {
           />
         </div>
         <div className="sm:col-span-2">
-          <Label>{t("settings.offerCompanyAddress")}</Label>
-          <Input
-            value={form.companyAddress}
-            onChange={(e) => setField("companyAddress", e.target.value)}
-          />
-        </div>
-        <div>
-          <Label>{t("settings.offerBankPayee")}</Label>
-          <Input
-            value={form.bankPayee}
-            onChange={(e) => setField("bankPayee", e.target.value)}
-          />
-        </div>
-        <div>
-          <Label>{t("settings.offerBankName")}</Label>
-          <Input
-            value={form.bankName}
-            onChange={(e) => setField("bankName", e.target.value)}
-          />
-        </div>
-        <div>
-          <Label>{t("settings.offerBankBranch")}</Label>
-          <Input
-            value={form.bankBranch}
-            onChange={(e) => setField("bankBranch", e.target.value)}
-          />
-        </div>
-        <div>
-          <Label>{t("settings.offerBankAccount")}</Label>
-          <Input
-            value={form.bankAccount}
-            onChange={(e) => setField("bankAccount", e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <Label>{t("settings.offerPaymentTerms")}</Label>
+          <Label>{t("settings.offerBankFooter")}</Label>
+          <p className="mb-1 text-xs text-muted">
+            {t("settings.offerBankFooterHint")}
+          </p>
           <Textarea
-            rows={3}
-            value={form.paymentTerms}
-            onChange={(e) => setField("paymentTerms", e.target.value)}
+            rows={7}
+            value={form.bankFooter}
+            onChange={(e) => setField("bankFooter", e.target.value)}
+            dir="rtl"
           />
         </div>
         <div className="sm:col-span-2">
@@ -228,7 +237,11 @@ export function OfferSettingsCard() {
         </div>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
           <Button type="submit">{t("common.save")}</Button>
-          <Button type="button" variant="secondary" onClick={() => void onReset()}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void onReset()}
+          >
             {t("settings.offerResetTemplates")}
           </Button>
         </div>

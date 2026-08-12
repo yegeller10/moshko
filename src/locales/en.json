@@ -453,6 +453,8 @@
     "offerBankBranch": "Branch",
     "offerBankAccount": "Account number",
     "offerPaymentTerms": "Payment terms",
+    "offerBankFooter": "Bank info footer",
+    "offerBankFooterHint": "Full footer block printed at the bottom of the PDF (payment terms + bank details).",
     "offerWorkerLine": "Worker line template",
     "offerCarLine": "Car line template",
     "offerEmailSubject": "Email subject",

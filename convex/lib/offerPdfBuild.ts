@@ -2,6 +2,7 @@ import satori from "satori";
 import { initWasm, Resvg } from "@resvg/resvg-wasm";
 import { PDFDocument } from "pdf-lib";
 import bidiFactory from "bidi-js";
+import { composeBankFooter } from "./offerDefaults";
 import { HEEBO_REGULAR_BASE64 } from "./heeboRegularBase64";
 import { HEEBO_BOLD_BASE64 } from "./heeboBoldBase64";
 import { LOGO_PNG_BASE64 } from "./logoPngBase64";
@@ -96,6 +97,12 @@ function formatDateOnly(ts: number) {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+function formatIssuedAt(ts: number) {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 type OfferPdfInput = {
   offer: {
     number: number;
@@ -128,6 +135,7 @@ type OfferPdfInput = {
   clientName: string;
   clientEmails: string;
   issuedAt: number;
+  contentHash?: string;
 };
 
 function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
@@ -135,7 +143,14 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
   const co = offer.companySnapshot;
   const bank = offer.bankSnapshot;
   const vatPct = Math.round(offer.vatRate * 100);
-  const terms = bank.paymentTerms
+  const footerSource = composeBankFooter({
+    paymentTerms: bank.paymentTerms,
+    bankPayee: bank.payee,
+    bankName: bank.bank,
+    bankBranch: bank.branch,
+    bankAccount: bank.account,
+  });
+  const terms = footerSource
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean)
@@ -156,6 +171,8 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
       padR?: number;
       /** false for pure LTR (money/emails) */
       override?: boolean;
+      fontWeight?: number;
+      color?: string;
     } = {},
   ) =>
     el(
@@ -169,6 +186,8 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           paddingLeft: opts.padL ?? 0,
           paddingRight: opts.padR ?? 0,
           lineHeight: 1.45,
+          ...(opts.fontWeight ? { fontWeight: opts.fontWeight } : {}),
+          ...(opts.color ? { color: opts.color } : {}),
         },
       },
       content,
@@ -194,7 +213,7 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
     desc: string,
     price: string,
     total: string,
-    opts?: { header?: boolean; muted?: boolean },
+    opts?: { header?: boolean },
   ) =>
     el(
       "div",
@@ -206,21 +225,37 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           width: "100%",
           padding: opts?.header ? "0 0 8px" : "9px 0",
           borderBottom: `1px solid ${LINE}`,
-          fontSize: opts?.header ? 11 : 11.5,
-          color: opts?.muted ? MUTED : INK,
+          fontSize: opts?.header ? 12 : 11.5,
+          color: INK,
           fontWeight: opts?.header ? 700 : 400,
           alignItems: "flex-start",
         },
       },
-      cell(118, total, { align: "left", direction: "ltr", override: false }),
-      cell(100, price, { align: "left", direction: "ltr", override: false }),
+      cell(118, total, {
+        align: "left",
+        direction: "ltr",
+        override: false,
+        fontWeight: opts?.header ? 700 : 400,
+      }),
+      cell(100, price, {
+        align: "left",
+        direction: "ltr",
+        override: false,
+        fontWeight: opts?.header ? 700 : 400,
+      }),
       cell("flex", desc, {
         align: "right",
         direction: "ltr",
         padL: 12,
         padR: 10,
+        fontWeight: opts?.header ? 700 : 400,
       }),
-      cell(52, qty, { align: "right", direction: "ltr", override: false }),
+      cell(52, qty, {
+        align: "right",
+        direction: "ltr",
+        override: false,
+        fontWeight: opts?.header ? 700 : 400,
+      }),
     );
 
   const totalLine = (label: string, value: string) =>
@@ -277,16 +312,16 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           style: {
             display: "flex",
             flexDirection: "column",
-            alignItems: "flex-end",
-            maxWidth: 210,
+            alignItems: "flex-start",
+            width: 200,
             direction: "ltr",
           },
         },
         logoDataUri
           ? el("img", {
               src: logoDataUri,
-              width: 132,
-              height: 86,
+              width: 140,
+              height: 90,
               style: { objectFit: "contain", marginBottom: 8 },
             })
           : null,
@@ -313,10 +348,12 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
         "div",
         {
           style: {
-            width: 360,
+            flex: 1,
+            maxWidth: 480,
+            minWidth: 420,
             background: BRAND,
             color: "#ffffff",
-            padding: "14px 18px 16px",
+            padding: "16px 20px 18px",
             display: "flex",
             flexDirection: "column",
             gap: 4,
@@ -371,13 +408,7 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
       fontWeight: 700,
       marginBottom: 16,
     }),
-    row(
-      t("כמות"),
-      t("פירוט"),
-      t("מחיר"),
-      t('סה"כ'),
-      { header: true, muted: true },
-    ),
+    row(t("כמות"), t("פירוט"), t("מחיר"), t('סה"כ'), { header: true }),
     ...offer.lineItems.map((item) =>
       row(
         String(item.quantity),
@@ -441,14 +472,16 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
       ? he(t(`לידי ${offer.attention}`), {
           marginTop: 20,
           fontSize: 14,
+          fontWeight: 700,
         })
       : null,
+    // Push bank + signature to bottom of page (match 308)
+    el("div", { style: { flex: 1, minHeight: 24 } }),
     el("div", {
       style: {
         height: 1,
         background: "#111111",
         width: "100%",
-        marginTop: 22,
         marginBottom: 14,
       },
     }),
@@ -463,15 +496,45 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           textAlign: "right",
           lineHeight: 1.5,
           direction: "ltr",
+          width: "100%",
+          alignItems: "flex-end",
         },
       },
-      ...terms.map((line) => he(line, { fontSize: 13, lineHeight: 1.5 })),
-      he(t(bank.payee), { fontSize: 13, lineHeight: 1.5 }),
-      he(t(bank.bank), { fontSize: 13, lineHeight: 1.5 }),
-      he(t(bank.branch), { fontSize: 13, lineHeight: 1.5 }),
-      he(t(`מ.ח ${bank.account}`), { fontSize: 13, lineHeight: 1.5 }),
+      ...terms.map((line) =>
+        he(line, {
+          fontSize: 13,
+          lineHeight: 1.5,
+          textAlign: "right",
+          width: "auto",
+        }),
+      ),
     ),
-    el("div", { style: { flex: 1 } }),
+    el(
+      "div",
+      {
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          width: "100%",
+          marginTop: 22,
+          gap: 4,
+        },
+      },
+      he(t("חתימה דיגיטלית מאובטחת"), {
+        fontSize: 12,
+        fontWeight: 700,
+        color: INK,
+        width: "auto",
+        textAlign: "right",
+      }),
+      he(t("מסמך ממוחשב — נוצר ונחתם דיגיטלית ע״י moshkoprod"), {
+        fontSize: 10,
+        color: MUTED,
+        width: "auto",
+        textAlign: "right",
+      }),
+    ),
     el(
       "div",
       {
@@ -481,29 +544,38 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           direction: "ltr",
           justifyContent: "space-between",
           alignItems: "flex-end",
-          borderTop: `1px solid ${INK}`,
+          borderTop: `1px solid ${LINE}`,
           paddingTop: 10,
-          marginTop: 18,
+          marginTop: 14,
+          width: "100%",
         },
       },
       el(
         "div",
         {
           style: {
-            fontSize: 10,
+            fontSize: 9,
             color: MUTED,
             textAlign: "left",
             direction: "ltr",
             unicodeBidi: "normal",
           },
         },
-        "created by moshkoprod",
+        args.contentHash
+          ? `created by moshkoprod · ${args.contentHash.slice(0, 12)}`
+          : "created by moshkoprod",
       ),
-      he(t("חתימה דיגיטלית מאובטחת"), {
-        fontSize: 10,
-        color: MUTED,
-        width: "auto",
-      }),
+      he(
+        t(
+          `הופק ב ${formatIssuedAt(args.issuedAt)} | הצעת מחיר ${offer.number} | עמוד 1 מתוך 1`,
+        ),
+        {
+          fontSize: 9,
+          color: MUTED,
+          width: "auto",
+          textAlign: "right",
+        },
+      ),
     ),
   );
 }
@@ -548,8 +620,20 @@ async function renderOfferPng(args: OfferPdfInput): Promise<Uint8Array> {
 export async function buildOfferPdfBytes(
   args: OfferPdfInput,
 ): Promise<Uint8Array> {
-  const png = await renderOfferPng(args);
+  const hash =
+    args.contentHash ??
+    `offer-${args.offer.number}-${args.issuedAt}`;
+  const png = await renderOfferPng({ ...args, contentHash: hash });
   const pdf = await PDFDocument.create();
+  pdf.setTitle(`הצעת מחיר ${args.offer.number}`);
+  pdf.setAuthor("moshkoprod");
+  pdf.setProducer("moshkoprod digitally sealed offer");
+  pdf.setCreator("moshkoprod");
+  pdf.setCreationDate(new Date(args.issuedAt));
+  pdf.setModificationDate(new Date(args.issuedAt));
+  pdf.setKeywords([`seal:${hash}`, "digitally-sealed", "moshkoprod"]);
+  pdf.setSubject(`Digitally sealed offer ${args.offer.number}`);
+
   const page = pdf.addPage([595.28, 841.89]);
   const image = await pdf.embedPng(png);
   page.drawImage(image, {
@@ -558,6 +642,7 @@ export async function buildOfferPdfBytes(
     width: page.getWidth(),
     height: page.getHeight(),
   });
+
   return pdf.save();
 }
 

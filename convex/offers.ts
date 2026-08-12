@@ -5,6 +5,7 @@ import { materializeJobForClient, normalizeAssignments } from "./calendar";
 import {
   DEFAULT_OFFER_SETTINGS,
   applyTemplate,
+  composeBankFooter,
   formatOfferDate,
   roundMoney,
 } from "./lib/offerDefaults";
@@ -350,7 +351,7 @@ export const createDraft = mutation({
         bank: settings.bankName,
         branch: settings.bankBranch,
         account: settings.bankAccount,
-        paymentTerms: settings.paymentTerms,
+        paymentTerms: composeBankFooter(settings),
       },
       createdBy: user._id,
       createdAt: now,

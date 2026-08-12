@@ -453,6 +453,8 @@
     "offerBankBranch": "סניף",
     "offerBankAccount": "מספר חשבון",
     "offerPaymentTerms": "תנאי תשלום",
+    "offerBankFooter": "כותרת תחתית — פרטי בנק",
+    "offerBankFooterHint": "הבלוק המלא שיופיע בתחתית ה־PDF (תנאי תשלום + פרטי חשבון).",
     "offerWorkerLine": "תבנית שורת עובד",
     "offerCarLine": "תבנית שורת רכב",
     "offerEmailSubject": "נושא מייל",
