@@ -486,6 +486,24 @@ export const markIssued = internalMutation({
   },
 });
 
+/** Store a freshly built PDF without sending email. */
+export const savePdf = internalMutation({
+  args: {
+    id: v.id("offers"),
+    contentHash: v.string(),
+    pdfStorageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const offer = await ctx.db.get(args.id);
+    if (!offer) throw new ConvexError("Offer not found");
+    await ctx.db.patch(args.id, {
+      contentHash: args.contentHash,
+      pdfStorageId: args.pdfStorageId,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export async function applyOfferClientDecision(
   ctx: MutationCtx,
   args: {

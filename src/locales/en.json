@@ -281,6 +281,7 @@
     "empty": "No offers yet",
     "offerNumber": "Offer {{n}}",
     "downloadPdf": "Download PDF",
+    "pdfReady": "PDF rebuilt with the latest design — opened in a new tab.",
     "resend": "Resend",
     "hash": "Content hash",
     "statusLabel": "Status",

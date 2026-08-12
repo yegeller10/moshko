@@ -569,6 +569,88 @@ function randomToken() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function requireActiveUser(ctx: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  auth: { getUserIdentity: () => Promise<any> };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  runQuery: (...args: any[]) => Promise<any>;
+}) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new ConvexError("Unauthenticated");
+  const me = await ctx.runQuery(api.users.me, {});
+  if (!me || me.status !== "active") {
+    throw new ConvexError("Not authorized");
+  }
+  return me as { _id: import("./_generated/dataModel").Id<"users"> };
+}
+
+async function buildAndUploadPdf(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: { runQuery: (...args: any[]) => Promise<any>; runMutation: (...args: any[]) => Promise<any> },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  offerId: any,
+  issuedAt: number,
+) {
+  const packed = await ctx.runQuery(internal.offers.getInternal, { id: offerId });
+  if (!packed?.offer) throw new ConvexError("Offer not found");
+  const { offer, client, settings } = packed;
+  if (offer.status === "cancelled") {
+    throw new ConvexError("Offer cancelled");
+  }
+
+  const pdfBytes = await buildOfferPdfBytes({
+    offer,
+    clientName: client?.name ?? "—",
+    clientEmails: [
+      ...(client?.emails ?? []),
+      ...(client?.email ? [client.email] : []),
+    ]
+      .filter(Boolean)
+      .join(", "),
+    issuedAt,
+  });
+
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const uploadUrl = await ctx.runMutation(api.offers.generateUploadUrl, {});
+  const uploadRes = await fetch(uploadUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/pdf" },
+    body: pdfBytes,
+  });
+  if (!uploadRes.ok) {
+    throw new ConvexError("Failed to upload PDF");
+  }
+  const { storageId } = (await uploadRes.json()) as {
+    storageId: import("./_generated/dataModel").Id<"_storage">;
+  };
+  return { pdfBytes, contentHash, storageId, offer, client, settings };
+}
+
+/** Rebuild + store the current 308-style PDF (no email). */
+export const regenerateOfferPdf = action({
+  args: { offerId: v.id("offers") },
+  handler: async (ctx, args) => {
+    await requireActiveUser(ctx);
+    const issuedAt = Date.now();
+    const { contentHash, storageId } = await buildAndUploadPdf(
+      ctx,
+      args.offerId,
+      issuedAt,
+    );
+    await ctx.runMutation(internal.offers.savePdf, {
+      id: args.offerId,
+      contentHash,
+      pdfStorageId: storageId,
+    });
+    const pdfUrl = await ctx.storage.getUrl(storageId as never);
+    return {
+      ok: true as const,
+      contentHash,
+      pdfUrl,
+    };
+  },
+});
+
 export const sendOffer = action({
   args: {
     offerId: v.id("offers"),
@@ -576,12 +658,7 @@ export const sendOffer = action({
     appOrigin: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Unauthenticated");
-    const me = await ctx.runQuery(api.users.me, {});
-    if (!me || me.status !== "active") {
-      throw new ConvexError("Not authorized");
-    }
+    const me = await requireActiveUser(ctx);
 
     const apiKey = process.env.RESEND_API_KEY;
     const from = process.env.EMAIL_FROM;
@@ -596,42 +673,9 @@ export const sendOffer = action({
       throw new ConvexError("Invalid app origin");
     }
 
-    const packed = await ctx.runQuery(internal.offers.getInternal, {
-      id: args.offerId,
-    });
-    if (!packed?.offer) throw new ConvexError("Offer not found");
-    const { offer, client, settings } = packed;
-    if (offer.status === "cancelled") {
-      throw new ConvexError("Offer cancelled");
-    }
-
     const issuedAt = Date.now();
-    const pdfBytes = await buildOfferPdfBytes({
-      offer,
-      clientName: client?.name ?? "—",
-      clientEmails: [
-        ...(client?.emails ?? []),
-        ...(client?.email ? [client.email] : []),
-      ]
-        .filter(Boolean)
-        .join(", "),
-      issuedAt,
-    });
-
-    const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
-
-    const uploadUrl = await ctx.runMutation(api.offers.generateUploadUrl, {});
-    const uploadRes = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/pdf" },
-      body: pdfBytes,
-    });
-    if (!uploadRes.ok) {
-      throw new ConvexError("Failed to upload PDF");
-    }
-    const { storageId } = (await uploadRes.json()) as {
-      storageId: string;
-    };
+    const { pdfBytes, contentHash, storageId, offer, client, settings } =
+      await buildAndUploadPdf(ctx, args.offerId, issuedAt);
 
     const token = randomToken();
     const link = await ctx.runMutation(internal.emailLinks.createForOffer, {
@@ -701,7 +745,7 @@ export const sendOffer = action({
     await ctx.runMutation(internal.offers.markIssued, {
       id: args.offerId,
       contentHash,
-      pdfStorageId: storageId as never,
+      pdfStorageId: storageId,
       sentToEmail: args.toEmail.trim().toLowerCase(),
     });
     await ctx.runMutation(internal.emailLinks.markSent, {

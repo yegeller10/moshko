@@ -20,8 +20,10 @@ export function OfferDetailPage() {
     offerId ? { id: offerId } : "skip",
   );
   const sendOffer = useAction(api.offerPdf.sendOffer);
+  const regenerateOfferPdf = useAction(api.offerPdf.regenerateOfferPdf);
   const [toEmail, setToEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +42,26 @@ export function OfferDetailPage() {
     ...(offer.client?.email ? [offer.client.email] : []),
     ...(offer.sentToEmail ? [offer.sentToEmail] : []),
   ].filter(Boolean);
+
+  async function onDownloadPdf() {
+    setPdfBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await regenerateOfferPdf({ offerId: offerId! });
+      if (!result.pdfUrl) {
+        setError(t("common.error"));
+        return;
+      }
+      window.open(result.pdfUrl, "_blank", "noopener,noreferrer");
+      setMessage(t("offers.pdfReady"));
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   async function onResend() {
     setBusy(true);
@@ -75,11 +97,13 @@ export function OfferDetailPage() {
           <Button asChild variant="secondary">
             <Link to="/offers">{t("offers.titleList")}</Link>
           </Button>
-          {offer.pdfUrl && (
-            <Button asChild>
-              <a href={offer.pdfUrl} target="_blank" rel="noreferrer">
-                {t("offers.downloadPdf")}
-              </a>
+          {offer.status !== "cancelled" && (
+            <Button
+              type="button"
+              disabled={pdfBusy}
+              onClick={() => void onDownloadPdf()}
+            >
+              {pdfBusy ? t("common.loading") : t("offers.downloadPdf")}
             </Button>
           )}
         </div>
@@ -109,6 +133,8 @@ export function OfferDetailPage() {
             {t("offers.hash")}: {offer.contentHash}
           </p>
         )}
+        {message && <p className="text-sm text-emerald-800">{message}</p>}
+        {error && <p className="text-sm text-red-700">{error}</p>}
       </Card>
 
       <Card className="space-y-2">
