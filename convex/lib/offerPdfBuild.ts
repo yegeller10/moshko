@@ -8,14 +8,42 @@ import { HEEBO_BOLD_BASE64 } from "./heeboBoldBase64";
 import { LOGO_PNG_BASE64 } from "./logoPngBase64";
 import { RESVG_WASM_BASE64 } from "./resvgWasmBase64";
 
-const BRAND = "#5d92e4"; // sample 308-heEditable blue
+/** Slightly darker than measured #5d93e5 — matches Morning sample weight on print. */
+const BRAND = "#4f84d6";
 const INK = "#111111";
 const MUTED = "#5a5a5a";
 const LINE = "#c8c8c8";
 const PAGE_W = 794; // ~A4 @ 96dpi
 const PAGE_H = 1123;
 const FONT_STACK = "Heebo";
+/** Sample 308 blue card ~411css wide, ~29 right margin, flush top. */
+const BLUE_W = 412;
+const PAGE_PAD_X = 40;
+const PAGE_PAD_R_HEADER = 28;
+const COL_TOTAL = 118;
+const COL_PRICE = 100;
+const COL_QTY = 52;
 const bidi = bidiFactory();
+
+/** Dedupe client emails (emails[] + legacy email often repeat the same address). */
+export function joinClientEmails(
+  ...parts: Array<string | string[] | null | undefined>
+): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of parts) {
+    const list = Array.isArray(part) ? part : part ? [part] : [];
+    for (const raw of list) {
+      const e = raw.trim();
+      if (!e) continue;
+      const key = e.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+    }
+  }
+  return out.join(", ");
+}
 
 /**
  * Satori does not layout Hebrew correctly with direction:rtl.
@@ -174,13 +202,22 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
       fontWeight?: number;
       color?: string;
     } = {},
-  ) =>
-    el(
+  ) => {
+    const align = opts.align ?? "right";
+    return el(
       "div",
       {
         style: {
           ...(width === "flex" ? { flex: 1 } : { width, flexShrink: 0 }),
-          textAlign: opts.align ?? "right",
+          display: "flex",
+          flexDirection: "row",
+          justifyContent:
+            align === "left"
+              ? "flex-start"
+              : align === "center"
+                ? "center"
+                : "flex-end",
+          textAlign: align,
           direction: opts.direction ?? "ltr",
           unicodeBidi: opts.override === false ? "normal" : "bidi-override",
           paddingLeft: opts.padL ?? 0,
@@ -192,21 +229,37 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
       },
       content,
     );
+  };
 
-  const he = (content: string, style: Record<string, unknown> = {}) =>
-    el(
+  const he = (content: string, style: Record<string, unknown> = {}) => {
+    const { justifyContent: _ignoredJustify, textAlign: alignIn, ...rest } =
+      style;
+    void _ignoredJustify;
+    const align = (alignIn as string | undefined) ?? "right";
+    const justify =
+      (style.justifyContent as string | undefined) ??
+      (align === "left"
+        ? "flex-start"
+        : align === "center"
+          ? "center"
+          : "flex-end");
+    return el(
       "div",
       {
         style: {
           direction: "ltr",
           unicodeBidi: "bidi-override",
-          textAlign: "right",
           width: "100%",
-          ...style,
+          flexDirection: "row",
+          ...rest,
+          textAlign: align,
+          display: "flex",
+          justifyContent: justify,
         },
       },
       content,
     );
+  };
 
   const row = (
     qty: string,
@@ -231,14 +284,14 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           alignItems: "flex-start",
         },
       },
-      cell(118, total, {
-        align: "left",
+      cell(COL_TOTAL, total, {
+        align: "right",
         direction: "ltr",
         override: false,
         fontWeight: opts?.header ? 700 : 400,
       }),
-      cell(100, price, {
-        align: "left",
+      cell(COL_PRICE, price, {
+        align: "right",
         direction: "ltr",
         override: false,
         fontWeight: opts?.header ? 700 : 400,
@@ -250,7 +303,7 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
         padR: 10,
         fontWeight: opts?.header ? 700 : 400,
       }),
-      cell(52, qty, {
+      cell(COL_QTY, qty, {
         align: "right",
         direction: "ltr",
         override: false,
@@ -271,10 +324,14 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           padding: "4px 0",
         },
       },
-      cell(118, value, { align: "left", direction: "ltr", override: false }),
-      cell(100, "", { align: "left", override: false }),
+      cell(COL_TOTAL, value, {
+        align: "right",
+        direction: "ltr",
+        override: false,
+      }),
+      cell(COL_PRICE, "", { align: "right", override: false }),
       cell("flex", label, { align: "right", direction: "ltr", padR: 10 }),
-      cell(52, "", { override: false }),
+      cell(COL_QTY, "", { override: false }),
     );
 
   return el(
@@ -289,9 +346,10 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
         color: INK,
         fontFamily: FONT_STACK,
         direction: "ltr",
-        padding: "32px 40px 28px",
+        padding: 0,
       },
     },
+    // Header: blue flush to top + tighter right margin (match 308)
     el(
       "div",
       {
@@ -300,10 +358,13 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          gap: 24,
-          marginBottom: 30,
+          gap: 20,
+          marginBottom: 28,
           width: "100%",
           direction: "ltr",
+          paddingTop: 0,
+          paddingLeft: PAGE_PAD_X,
+          paddingRight: PAGE_PAD_R_HEADER,
         },
       },
       el(
@@ -312,9 +373,11 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           style: {
             display: "flex",
             flexDirection: "column",
-            alignItems: "flex-start",
+            alignItems: "flex-end",
             width: 200,
             direction: "ltr",
+            paddingTop: 28,
+            flexShrink: 0,
           },
         },
         logoDataUri
@@ -322,7 +385,11 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
               src: logoDataUri,
               width: 140,
               height: 90,
-              style: { objectFit: "contain", marginBottom: 8 },
+              style: {
+                objectFit: "contain",
+                marginBottom: 8,
+                alignSelf: "flex-start",
+              },
             })
           : null,
         he(t(co.name), {
@@ -330,64 +397,96 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           fontWeight: 700,
           textAlign: "right",
           marginBottom: 4,
+          width: "100%",
         }),
         he(t(`עוסק מורשה ${co.vatId}`), {
           fontSize: 11,
           color: MUTED,
           textAlign: "right",
           lineHeight: 1.45,
+          width: "100%",
         }),
         he(t(co.address), {
           fontSize: 11,
           color: MUTED,
           textAlign: "right",
           lineHeight: 1.45,
+          width: "100%",
         }),
       ),
       el(
         "div",
         {
           style: {
-            flex: 1,
-            maxWidth: 480,
-            minWidth: 420,
+            width: BLUE_W,
+            flexShrink: 0,
             background: BRAND,
             color: "#ffffff",
-            padding: "16px 20px 18px",
+            padding: "20px 22px 24px",
             display: "flex",
             flexDirection: "column",
-            gap: 4,
+            gap: 2,
             direction: "ltr",
             alignItems: "stretch",
+            minHeight: 210,
           },
         },
-        he(formatDateOnly(args.issuedAt), {
-          fontSize: 13,
-          unicodeBidi: "normal",
-          textAlign: "right",
-          display: "flex",
-          justifyContent: "flex-end",
-        }),
-        he(t("לכבוד:"), { fontSize: 13, marginTop: 6, textAlign: "right" }),
-        he(t(args.clientName), {
-          fontSize: 12,
-          fontWeight: 700,
-          lineHeight: 1.35,
-          textAlign: "right",
-        }),
-        args.clientEmails
-          ? he(args.clientEmails, {
-              fontSize: 11,
-              opacity: 0.95,
-              unicodeBidi: "normal",
+        // Sample 308: date LEFT, recipient block RIGHT
+        el(
+          "div",
+          {
+            style: {
+              display: "flex",
+              flexDirection: "row",
+              direction: "ltr",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              width: "100%",
+              gap: 16,
+            },
+          },
+          he(formatDateOnly(args.issuedAt), {
+            fontSize: 13,
+            unicodeBidi: "normal",
+            textAlign: "left",
+            justifyContent: "flex-start",
+            width: "auto",
+            flexShrink: 0,
+          }),
+          el(
+            "div",
+            {
+              style: {
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "stretch",
+                flex: 1,
+                direction: "ltr",
+                gap: 3,
+              },
+            },
+            he(t("לכבוד:"), { fontSize: 13, textAlign: "right" }),
+            he(t(args.clientName), {
+              fontSize: 12,
+              fontWeight: 700,
+              lineHeight: 1.35,
               textAlign: "right",
-            })
-          : null,
+            }),
+            args.clientEmails
+              ? he(args.clientEmails, {
+                  fontSize: 11,
+                  opacity: 0.95,
+                  unicodeBidi: "normal",
+                  textAlign: "right",
+                })
+              : null,
+          ),
+        ),
         el("div", {
           style: {
             height: 1,
             background: "rgba(255,255,255,0.9)",
-            margin: "10px 0 12px",
+            margin: "12px 0 14px",
             width: "100%",
           },
         }),
@@ -395,26 +494,14 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
           fontSize: 28,
           fontWeight: 700,
           lineHeight: 1.15,
+          textAlign: "right",
         }),
         he(t("העתק נאמן למקור"), {
           fontSize: 12,
           marginTop: 4,
           opacity: 0.95,
+          textAlign: "right",
         }),
-      ),
-    ),
-    he(t(offer.title), {
-      fontSize: 17,
-      fontWeight: 700,
-      marginBottom: 16,
-    }),
-    row(t("כמות"), t("פירוט"), t("מחיר"), t('סה"כ'), { header: true }),
-    ...offer.lineItems.map((item) =>
-      row(
-        String(item.quantity),
-        t(item.description),
-        money(item.unitPrice),
-        money(item.total),
       ),
     ),
     el(
@@ -423,14 +510,165 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
         style: {
           display: "flex",
           flexDirection: "column",
-          marginTop: 12,
-          gap: 2,
+          flex: 1,
           width: "100%",
+          paddingLeft: PAGE_PAD_X,
+          paddingRight: PAGE_PAD_X,
+          paddingBottom: 28,
         },
       },
-      totalLine(t('סה"כ'), money(offer.subtotal)),
-      totalLine(t(`מע"מ ${vatPct}%`), money(offer.vatAmount)),
-      // Sample 308: blue amount pill on LEFT, black label on RIGHT
+      he(t(offer.title), {
+        fontSize: 17,
+        fontWeight: 700,
+        marginBottom: 16,
+        textAlign: "right",
+      }),
+      row(t("כמות"), t("פירוט"), t("מחיר"), t('סה"כ'), { header: true }),
+      ...offer.lineItems.map((item) =>
+        row(
+          String(item.quantity),
+          t(item.description),
+          money(item.unitPrice),
+          money(item.total),
+        ),
+      ),
+      el(
+        "div",
+        {
+          style: {
+            display: "flex",
+            flexDirection: "column",
+            marginTop: 12,
+            gap: 2,
+            width: "100%",
+          },
+        },
+        totalLine(t('סה"כ'), money(offer.subtotal)),
+        totalLine(t(`מע"מ ${vatPct}%`), money(offer.vatAmount)),
+        // Same column grid as total/VAT — blue amount under סה״כ col
+        el(
+          "div",
+          {
+            style: {
+              display: "flex",
+              flexDirection: "row",
+              direction: "ltr",
+              width: "100%",
+              marginTop: 8,
+              alignItems: "center",
+            },
+          },
+          el(
+            "div",
+            {
+              style: {
+                width: COL_TOTAL,
+                flexShrink: 0,
+                display: "flex",
+                justifyContent: "flex-end",
+              },
+            },
+            el(
+              "div",
+              {
+                style: {
+                  background: BRAND,
+                  color: "#ffffff",
+                  padding: "8px 12px",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  textAlign: "right",
+                  direction: "ltr",
+                  unicodeBidi: "normal",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                },
+              },
+              money(offer.grandTotal),
+            ),
+          ),
+          el("div", {
+            style: { width: COL_PRICE, flexShrink: 0 },
+          }),
+          cell("flex", t('סה"כ לתשלום'), {
+            align: "right",
+            direction: "ltr",
+            padR: 10,
+            fontWeight: 700,
+          }),
+          el("div", {
+            style: { width: COL_QTY, flexShrink: 0 },
+          }),
+        ),
+      ),
+      offer.attention
+        ? he(t(`לידי ${offer.attention}`), {
+            marginTop: 20,
+            fontSize: 14,
+            fontWeight: 700,
+            textAlign: "right",
+          })
+        : null,
+      // Push bank + signature to bottom of page (match 308)
+      el("div", { style: { flex: 1, minHeight: 24 } }),
+      el("div", {
+        style: {
+          height: 1,
+          background: "#111111",
+          width: "100%",
+          marginBottom: 14,
+        },
+      }),
+      el(
+        "div",
+        {
+          style: {
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+            fontSize: 13,
+            textAlign: "right",
+            lineHeight: 1.5,
+            direction: "ltr",
+            width: "100%",
+            alignItems: "flex-end",
+          },
+        },
+        ...terms.map((line) =>
+          he(line, {
+            fontSize: 13,
+            lineHeight: 1.5,
+            textAlign: "right",
+            width: "auto",
+          }),
+        ),
+      ),
+      el(
+        "div",
+        {
+          style: {
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            width: "100%",
+            marginTop: 22,
+            gap: 4,
+          },
+        },
+        he(t("חתימה דיגיטלית מאובטחת"), {
+          fontSize: 12,
+          fontWeight: 700,
+          color: INK,
+          width: "auto",
+          textAlign: "right",
+        }),
+        he(t("מסמך ממוחשב — נוצר ונחתם דיגיטלית ע״י moshkoprod"), {
+          fontSize: 10,
+          color: MUTED,
+          width: "auto",
+          textAlign: "right",
+        }),
+      ),
       el(
         "div",
         {
@@ -438,143 +676,40 @@ function buildTree(args: OfferPdfInput, logoDataUri: string | null): VNode {
             display: "flex",
             flexDirection: "row",
             direction: "ltr",
-            width: "100%",
-            marginTop: 8,
-            alignItems: "center",
             justifyContent: "space-between",
+            alignItems: "flex-end",
+            borderTop: `1px solid ${LINE}`,
+            paddingTop: 10,
+            marginTop: 14,
+            width: "100%",
           },
         },
         el(
           "div",
           {
             style: {
-              background: BRAND,
-              color: "#ffffff",
-              padding: "8px 16px",
-              fontSize: 15,
-              fontWeight: 700,
+              fontSize: 9,
+              color: MUTED,
               textAlign: "left",
               direction: "ltr",
               unicodeBidi: "normal",
             },
           },
-          money(offer.grandTotal),
+          args.contentHash
+            ? `created by moshkoprod · ${args.contentHash.slice(0, 12)}`
+            : "created by moshkoprod",
         ),
-        he(t('סה"כ לתשלום'), {
-          fontSize: 15,
-          fontWeight: 700,
-          color: INK,
-          width: "auto",
-          textAlign: "right",
-        }),
-      ),
-    ),    offer.attention
-      ? he(t(`לידי ${offer.attention}`), {
-          marginTop: 20,
-          fontSize: 14,
-          fontWeight: 700,
-        })
-      : null,
-    // Push bank + signature to bottom of page (match 308)
-    el("div", { style: { flex: 1, minHeight: 24 } }),
-    el("div", {
-      style: {
-        height: 1,
-        background: "#111111",
-        width: "100%",
-        marginBottom: 14,
-      },
-    }),
-    el(
-      "div",
-      {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          gap: 3,
-          fontSize: 13,
-          textAlign: "right",
-          lineHeight: 1.5,
-          direction: "ltr",
-          width: "100%",
-          alignItems: "flex-end",
-        },
-      },
-      ...terms.map((line) =>
-        he(line, {
-          fontSize: 13,
-          lineHeight: 1.5,
-          textAlign: "right",
-          width: "auto",
-        }),
-      ),
-    ),
-    el(
-      "div",
-      {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          width: "100%",
-          marginTop: 22,
-          gap: 4,
-        },
-      },
-      he(t("חתימה דיגיטלית מאובטחת"), {
-        fontSize: 12,
-        fontWeight: 700,
-        color: INK,
-        width: "auto",
-        textAlign: "right",
-      }),
-      he(t("מסמך ממוחשב — נוצר ונחתם דיגיטלית ע״י moshkoprod"), {
-        fontSize: 10,
-        color: MUTED,
-        width: "auto",
-        textAlign: "right",
-      }),
-    ),
-    el(
-      "div",
-      {
-        style: {
-          display: "flex",
-          flexDirection: "row",
-          direction: "ltr",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          borderTop: `1px solid ${LINE}`,
-          paddingTop: 10,
-          marginTop: 14,
-          width: "100%",
-        },
-      },
-      el(
-        "div",
-        {
-          style: {
+        he(
+          t(
+            `הופק ב ${formatIssuedAt(args.issuedAt)} | הצעת מחיר ${offer.number} | עמוד 1 מתוך 1`,
+          ),
+          {
             fontSize: 9,
             color: MUTED,
-            textAlign: "left",
-            direction: "ltr",
-            unicodeBidi: "normal",
+            width: "auto",
+            textAlign: "right",
           },
-        },
-        args.contentHash
-          ? `created by moshkoprod · ${args.contentHash.slice(0, 12)}`
-          : "created by moshkoprod",
-      ),
-      he(
-        t(
-          `הופק ב ${formatIssuedAt(args.issuedAt)} | הצעת מחיר ${offer.number} | עמוד 1 מתוך 1`,
         ),
-        {
-          fontSize: 9,
-          color: MUTED,
-          width: "auto",
-          textAlign: "right",
-        },
       ),
     ),
   );

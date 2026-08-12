@@ -233,10 +233,14 @@ export const previewFromJobs = query({
     return {
       clientId,
       clientName: client?.name ?? "—",
-      clientEmails: [
-        ...(client?.emails ?? []),
-        ...(client?.email ? [client.email] : []),
-      ].filter(Boolean),
+      clientEmails: Array.from(
+        new Map(
+          [...(client?.emails ?? []), ...(client?.email ? [client.email] : [])]
+            .map((e) => e.trim())
+            .filter(Boolean)
+            .map((e) => [e.toLowerCase(), e] as const),
+        ).values(),
+      ),
       nextNumber: settings.nextNumber,
       vatPercent: settings.vatPercent,
       lineItems,

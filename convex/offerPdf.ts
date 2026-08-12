@@ -6,7 +6,11 @@ import { api, internal } from "./_generated/api";
 import { createHash } from "crypto";
 import { applyTemplate } from "./lib/offerDefaults";
 import { buildOfferEmailHtml } from "./lib/offerEmailHtml";
-import { buildOfferPdfBytes, formatMoneyShekel } from "./lib/offerPdfBuild";
+import {
+  buildOfferPdfBytes,
+  formatMoneyShekel,
+  joinClientEmails,
+} from "./lib/offerPdfBuild";
 
 function randomToken() {
   const bytes = new Uint8Array(32);
@@ -54,12 +58,7 @@ export const sendOffer = action({
     const pdfBytes = await buildOfferPdfBytes({
       offer,
       clientName: client?.name ?? "—",
-      clientEmails: [
-        ...(client?.emails ?? []),
-        ...(client?.email ? [client.email] : []),
-      ]
-        .filter(Boolean)
-        .join(", "),
+      clientEmails: joinClientEmails(client?.emails, client?.email),
       issuedAt,
     });
 

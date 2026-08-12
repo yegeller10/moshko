@@ -4,7 +4,7 @@ import { action } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { createHash } from "crypto";
-import { buildOfferPdfBytes } from "./lib/offerPdfBuild";
+import { buildOfferPdfBytes, joinClientEmails } from "./lib/offerPdfBuild";
 
 /**
  * Rebuild PDF for download only — does not persist to Convex storage.
@@ -48,12 +48,7 @@ export const rebuild = action({
     const pdfBytes = await buildOfferPdfBytes({
       offer,
       clientName: client?.name ?? "—",
-      clientEmails: [
-        ...(client?.emails ?? []),
-        ...(client?.email ? [client.email] : []),
-      ]
-        .filter(Boolean)
-        .join(", "),
+      clientEmails: joinClientEmails(client?.emails, client?.email),
       issuedAt,
       contentHash: provisionalHash,
     });

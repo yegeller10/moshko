@@ -37,11 +37,23 @@ export function OfferDetailPage() {
     return <p className="text-sm text-red-700">{t("common.error")}</p>;
   }
 
-  const emails = [
-    ...(offer.client?.emails ?? []),
-    ...(offer.client?.email ? [offer.client.email] : []),
-    ...(offer.sentToEmail ? [offer.sentToEmail] : []),
-  ].filter(Boolean);
+  const emails = (() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of [
+      ...(offer.client?.emails ?? []),
+      ...(offer.client?.email ? [offer.client.email] : []),
+      ...(offer.sentToEmail ? [offer.sentToEmail] : []),
+    ]) {
+      const e = raw.trim();
+      if (!e) continue;
+      const key = e.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+    }
+    return out;
+  })();
 
   async function onDownloadPdf() {
     setPdfBusy(true);
