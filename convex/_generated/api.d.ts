@@ -23,6 +23,7 @@ import type * as import_ from "../import.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_costs from "../lib/costs.js";
 import type * as lib_hebrewFontBase64 from "../lib/hebrewFontBase64.js";
+import type * as lib_heeboFontBase64 from "../lib/heeboFontBase64.js";
 import type * as lib_israelHolidays from "../lib/israelHolidays.js";
 import type * as lib_latinFontBase64 from "../lib/latinFontBase64.js";
 import type * as lib_logoPngBase64 from "../lib/logoPngBase64.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/costs": typeof lib_costs;
   "lib/hebrewFontBase64": typeof lib_hebrewFontBase64;
+  "lib/heeboFontBase64": typeof lib_heeboFontBase64;
   "lib/israelHolidays": typeof lib_israelHolidays;
   "lib/latinFontBase64": typeof lib_latinFontBase64;
   "lib/logoPngBase64": typeof lib_logoPngBase64;
