@@ -3,7 +3,7 @@
  * Usage: npx tsx scripts/preview-offer-pdf.mjs
  */
 import fs from "fs";
-import { buildOfferPdfBytes } from "../convex/lib/buildOfferPdf.ts";
+import { buildOfferPdfBytes } from "../convex/offerPdf.ts";
 
 const bytes = await buildOfferPdfBytes({
   offer: {
